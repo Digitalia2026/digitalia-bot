@@ -47,25 +47,110 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    mensajes = {
-        "explorar": "👩 Aquí aparecerán las creadoras disponibles.",
-        "saldo": "⭐ Tu saldo: 0 puntos.",
-        "compras": "🛒 Aquí aparecerán tus compras.",
-        "cuenta": "👤 Aquí aparecerán los datos de tu cuenta.",
-        "recargar": "💰 Próximamente podrás recargar tu saldo.",
-        "ayuda": "❓ Ayuda de Digitalia.",
-    }
+    if query.data == "explorar":
+        botones_creadoras = [
+            [InlineKeyboardButton(
+                "👩 Ana — Desde 300 puntos",
+                callback_data="ana"
+            )],
+            [InlineKeyboardButton(
+                "⬅️ Volver",
+                callback_data="inicio"
+            )],
+        ]
 
-    await query.edit_message_text(
-        mensajes.get(query.data, "Opción no disponible.")
-    )
+        await query.edit_message_text(
+            "🌟 CREADORAS DISPONIBLES\n\n"
+            "👩 Ana\n"
+            "✨ Contenido exclusivo\n"
+            "💰 Desde 300 puntos",
+            reply_markup=InlineKeyboardMarkup(botones_creadoras),
+        )
+
+    elif query.data == "ana":
+        botones_ana = [
+            [InlineKeyboardButton(
+                "📸 Foto — 300 puntos",
+                callback_data="foto"
+            )],
+            [InlineKeyboardButton(
+                "🎥 Video — 700 puntos",
+                callback_data="video"
+            )],
+            [InlineKeyboardButton(
+                "📞 Tiempo privado — 20 puntos/min",
+                callback_data="llamada"
+            )],
+            [InlineKeyboardButton(
+                "⬅️ Volver",
+                callback_data="explorar"
+            )],
+        ]
+
+        await query.edit_message_text(
+            "👩 ANA\n\n"
+            "✨ Contenido exclusivo\n\n"
+            "📸 Foto — 300 puntos\n"
+            "🎥 Video — 700 puntos\n"
+            "📞 Tiempo privado — 20 puntos/min\n\n"
+            "Selecciona una opción:",
+            reply_markup=InlineKeyboardMarkup(botones_ana),
+        )
+
+    elif query.data == "foto":
+        await query.edit_message_text(
+            "📸 FOTO DE ANA\n\n"
+            "💰 Precio: 300 puntos\n\n"
+            "🔓 Próximamente podrás desbloquearla."
+        )
+
+    elif query.data == "video":
+        await query.edit_message_text(
+            "🎥 VIDEO DE ANA\n\n"
+            "💰 Precio: 700 puntos\n\n"
+            "🔓 Próximamente podrás desbloquearlo."
+        )
+
+    elif query.data == "llamada":
+        await query.edit_message_text(
+            "📞 TIEMPO PRIVADO\n\n"
+            "💰 Precio: 20 puntos por minuto\n\n"
+            "🔓 Próximamente podrás solicitarlo."
+        )
+
+    elif query.data == "inicio":
+        await start(update, context)
+
+    elif query.data == "saldo":
+        await query.edit_message_text(
+            "⭐ Tu saldo actual es de 0 puntos."
+        )
+
+    elif query.data == "compras":
+        await query.edit_message_text(
+            "🛒 Aquí aparecerán tus compras."
+        )
+
+    elif query.data == "cuenta":
+        await query.edit_message_text(
+            "👤 Aquí aparecerán los datos de tu cuenta."
+        )
+
+    elif query.data == "recargar":
+        await query.edit_message_text(
+            "💰 La recarga estará disponible próximamente."
+        )
+
+    elif query.data == "ayuda":
+        await query.edit_message_text(
+            "❓ AYUDA\n\n"
+            "Si necesitas ayuda, podrás contactar con Digitalia."
+        )
 
 
 def main():
-    # Iniciar la página web en segundo plano
     Thread(target=iniciar_web, daemon=True).start()
 
-    # Iniciar el bot de Telegram
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))

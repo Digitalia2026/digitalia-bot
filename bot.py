@@ -2,16 +2,26 @@ import os
 from threading import Thread
 
 from flask import Flask
-from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
+from telegram import Update, ReplyKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler
+from telegram.ext import MessageHandler, CallbackQueryHandler
+from telegram.ext import ContextTypes, filters
 
 
 TOKEN = os.getenv("BOT_TOKEN")
 
+# =========================================================
+# CONFIGURACIÓN DE VELVET MUSA
+# =========================================================
+
+MELISSA_PHOTO_URL = (
+    "https://i.ibb.co/VYpN8wtP/"
+    "Chat-GPT-Image-1-ago-2026-06-35-15-p-m.png"
+)
+
 MODELS_CHANNEL = "https://t.me/+BUxwqByLYK00ZTYx"
 AGENCY_CHANNEL = "https://t.me/+MrTIOV4GlqAzNWIx"
-
-ANA_PHOTO = "ana.jpg"
 
 
 # =========================================================
@@ -28,11 +38,14 @@ def home():
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
-    web.run(host="0.0.0.0", port=port)
+    web.run(
+        host="0.0.0.0",
+        port=port
+    )
 
 
 # =========================================================
-# TEXTOS
+# TEXTOS EN ESPAÑOL
 # =========================================================
 
 ES = {
@@ -54,7 +67,10 @@ ES = {
         "👇 Elige una opción:"
     ),
 
-    "user_title": "👤💎 MODO USUARIO 💎👤",
+    "user_title": (
+        "👤💎 MODO USUARIO 💎👤"
+    ),
+
     "explore": "🔎 Explorar Musas",
     "balance": "⭐ Mi saldo",
     "recharge": "💰 Recargar saldo",
@@ -62,7 +78,10 @@ ES = {
     "calls": "📞 Mis llamadas",
     "profile": "👤 Mi perfil",
 
-    "model_title": "🔥💋 MODO MODELO 💋🔥",
+    "model_title": (
+        "🔥💋 MODO MODELO 💋🔥"
+    ),
+
     "model_profile": "👤 Mi perfil",
     "content": "📸 Mi contenido",
     "publish": "➕ Publicar contenido",
@@ -73,7 +92,10 @@ ES = {
     "withdraw": "💸 Solicitar retiro",
     "model_channel": "📢 Canal exclusivo de Musas",
 
-    "agency_title": "🏢🔥 MODO AGENCIA 🔥🏢",
+    "agency_title": (
+        "🏢🔥 MODO AGENCIA 🔥🏢"
+    ),
+
     "models": "👩‍👩‍👧 Mis Musas",
     "recruit": "➕ Reclutar Musa",
     "codes": "🔑 Mis códigos",
@@ -86,36 +108,29 @@ ES = {
 
     "back": "⬅️ Volver",
 
-    "ana": (
-        "👩🔥 ANA 🔥\n\n"
-        "🎂 24 años · 🇨🇴 Colombia\n\n"
-        "✨ Me encanta conversar, conocer personas y compartir "
-        "momentos especiales. 😈\n\n"
-        "🟢 Disponible\n\n"
-        "📞 Llamadas desde 25 💎/min\n"
-        "📸 Contenido exclusivo"
-    ),
-
-    "coming": (
-        "🚀🔥 PRÓXIMAMENTE 🔥\n\n"
-        "Estamos preparando esta función para Velvet Musa. 🖤😈"
-    ),
-
-    "history_text": (
-        "📜💎 HISTORIAL 💎📜\n\n"
-        "Aquí aparecerán tus recargas, compras de contenido "
-        "y llamadas cuando el sistema de pagos esté activo."
-    ),
-
     "balance_text": (
         "⭐💎 MI SALDO 💎⭐\n\n"
         "💎 Saldo disponible: 0 puntos\n\n"
         "🔥 Próximamente podrás recargar tu saldo."
     ),
 
-    "language_changed": "🇪🇸 Español activado 🖤🔥"
+    "history_text": (
+        "📜💎 HISTORIAL 💎📜\n\n"
+        "Aquí aparecerán tus recargas, "
+        "contenido desbloqueado y llamadas."
+    ),
+
+    "coming": (
+        "🚀🔥 PRÓXIMAMENTE 🔥\n\n"
+        "Estamos preparando esta función "
+        "para Velvet Musa. 🖤😈"
+    )
 }
 
+
+# =========================================================
+# TEXTOS EN INGLÉS
+# =========================================================
 
 EN = {
     "home": "🏠 Home",
@@ -136,7 +151,10 @@ EN = {
         "👇 Choose an option:"
     ),
 
-    "user_title": "👤💎 USER MODE 💎👤",
+    "user_title": (
+        "👤💎 USER MODE 💎👤"
+    ),
+
     "explore": "🔎 Explore Muses",
     "balance": "⭐ My balance",
     "recharge": "💰 Add balance",
@@ -144,7 +162,10 @@ EN = {
     "calls": "📞 My calls",
     "profile": "👤 My profile",
 
-    "model_title": "🔥💋 MODEL MODE 💋🔥",
+    "model_title": (
+        "🔥💋 MODEL MODE 💋🔥"
+    ),
+
     "model_profile": "👤 My profile",
     "content": "📸 My content",
     "publish": "➕ Publish content",
@@ -155,7 +176,10 @@ EN = {
     "withdraw": "💸 Request withdrawal",
     "model_channel": "📢 Exclusive Muses channel",
 
-    "agency_title": "🏢🔥 AGENCY MODE 🔥🏢",
+    "agency_title": (
+        "🏢🔥 AGENCY MODE 🔥🏢"
+    ),
+
     "models": "👩‍👩‍👧 My Muses",
     "recruit": "➕ Recruit a Muse",
     "codes": "🔑 My codes",
@@ -168,35 +192,35 @@ EN = {
 
     "back": "⬅️ Back",
 
-    "ana": (
-        "👩🔥 ANA 🔥\n\n"
-        "🎂 24 years · 🇨🇴 Colombia\n\n"
-        "✨ I love talking, meeting people and sharing "
-        "special moments. 😈\n\n"
-        "🟢 Available\n\n"
-        "📞 Calls from 25 💎/min\n"
-        "📸 Exclusive content"
-    ),
-
-    "coming": (
-        "🚀🔥 COMING SOON 🔥\n\n"
-        "We're preparing this feature for Velvet Musa. 🖤😈"
-    ),
-
-    "history_text": (
-        "📜💎 HISTORY 💎📜\n\n"
-        "Your balance top-ups, content purchases and calls "
-        "will appear here when payments are active."
-    ),
-
     "balance_text": (
         "⭐💎 MY BALANCE 💎⭐\n\n"
         "💎 Available balance: 0 points\n\n"
         "🔥 Balance top-ups will be available soon."
     ),
 
-    "language_changed": "🇺🇸 English activated 🖤🔥"
+    "history_text": (
+        "📜💎 HISTORY 💎📜\n\n"
+        "Your top-ups, unlocked content "
+        "and calls will appear here."
+    ),
+
+    "coming": (
+        "🚀🔥 COMING SOON 🔥\n\n"
+        "We're preparing this feature "
+        "for Velvet Musa. 🖤😈"
+    )
 }
+
+
+# =========================================================
+# IDIOMA
+# =========================================================
+
+def get_texts(context):
+    if context.user_data.get("language") == "en":
+        return EN
+
+    return ES
 
 
 # =========================================================
@@ -221,13 +245,48 @@ def bottom_menu(t):
 
 def user_menu(t):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t["explore"], callback_data="explore")],
-        [InlineKeyboardButton(t["balance"], callback_data="balance")],
-        [InlineKeyboardButton(t["recharge"], callback_data="recharge")],
-        [InlineKeyboardButton(t["history"], callback_data="history")],
-        [InlineKeyboardButton(t["calls"], callback_data="user_calls")],
-        [InlineKeyboardButton(t["profile"], callback_data="user_profile")],
-        [InlineKeyboardButton(t["back"], callback_data="home")]
+        [
+            InlineKeyboardButton(
+                t["explore"],
+                callback_data="explore"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["balance"],
+                callback_data="balance"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["recharge"],
+                callback_data="recharge"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["history"],
+                callback_data="history"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["calls"],
+                callback_data="user_calls"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["profile"],
+                callback_data="user_profile"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["back"],
+                callback_data="home"
+            )
+        ]
     ])
 
 
@@ -237,19 +296,66 @@ def user_menu(t):
 
 def model_menu(t):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t["model_profile"], callback_data="model_profile")],
-        [InlineKeyboardButton(t["content"], callback_data="model_content")],
-        [InlineKeyboardButton(t["publish"], callback_data="publish")],
-        [InlineKeyboardButton(t["earnings"], callback_data="earnings")],
-        [InlineKeyboardButton(t["sales"], callback_data="sales")],
-        [InlineKeyboardButton(t["model_calls"], callback_data="model_calls")],
-        [InlineKeyboardButton(t["my_agency"], callback_data="my_agency")],
-        [InlineKeyboardButton(t["withdraw"], callback_data="withdraw")],
-        [InlineKeyboardButton(
-            t["model_channel"],
-            url=MODELS_CHANNEL
-        )],
-        [InlineKeyboardButton(t["back"], callback_data="home")]
+        [
+            InlineKeyboardButton(
+                t["model_profile"],
+                callback_data="model_profile"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["content"],
+                callback_data="model_content"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["publish"],
+                callback_data="publish"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["earnings"],
+                callback_data="earnings"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["sales"],
+                callback_data="sales"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["model_calls"],
+                callback_data="model_calls"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["my_agency"],
+                callback_data="my_agency"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["withdraw"],
+                callback_data="withdraw"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["model_channel"],
+                url=MODELS_CHANNEL
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["back"],
+                callback_data="home"
+            )
+        ]
     ])
 
 
@@ -259,28 +365,66 @@ def model_menu(t):
 
 def agency_menu(t):
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton(t["models"], callback_data="models")],
-        [InlineKeyboardButton(t["recruit"], callback_data="recruit")],
-        [InlineKeyboardButton(t["codes"], callback_data="codes")],
-        [InlineKeyboardButton(t["team_sales"], callback_data="team_sales")],
-        [InlineKeyboardButton(t["commissions"], callback_data="commissions")],
-        [InlineKeyboardButton(
-            t["agency_withdraw"],
-            callback_data="agency_withdraw"
-        )],
-        [InlineKeyboardButton(
-            t["agency_profile"],
-            callback_data="agency_profile"
-        )],
-        [InlineKeyboardButton(
-            t["create_agency"],
-            callback_data="create_agency"
-        )],
-        [InlineKeyboardButton(
-            t["agency_channel"],
-            url=AGENCY_CHANNEL
-        )],
-        [InlineKeyboardButton(t["back"], callback_data="home")]
+        [
+            InlineKeyboardButton(
+                t["models"],
+                callback_data="models"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["recruit"],
+                callback_data="recruit"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["codes"],
+                callback_data="codes"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["team_sales"],
+                callback_data="team_sales"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["commissions"],
+                callback_data="commissions"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["agency_withdraw"],
+                callback_data="agency_withdraw"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["agency_profile"],
+                callback_data="agency_profile"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["create_agency"],
+                callback_data="create_agency"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["agency_channel"],
+                url=AGENCY_CHANNEL
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["back"],
+                callback_data="home"
+            )
+        ]
     ])
 
 
@@ -297,7 +441,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             context.user_data["language"] = "es"
 
-    t = EN if context.user_data["language"] == "en" else ES
+    t = get_texts(context)
 
     await update.message.reply_text(
         t["welcome"],
@@ -306,12 +450,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # =========================================================
-# BOTONES DEL MENÚ INFERIOR
+# MENÚ INFERIOR
 # =========================================================
 
-async def text_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def text_menu(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    t = get_texts(context)
     text = update.message.text
-    t = EN if context.user_data.get("language") == "en" else ES
 
     if text == t["home"]:
         await start(update, context)
@@ -344,24 +491,85 @@ async def text_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             context.user_data["language"] = "en"
 
-        t = EN if context.user_data["language"] == "en" else ES
+        t = get_texts(context)
 
         await update.message.reply_text(
-            t["language_changed"],
+            "🌎 " + t["language"] + " ✅",
             reply_markup=bottom_menu(t)
         )
-        return
 
 
 # =========================================================
-# BOTONES INTERNOS
+# MOSTRAR MELISSA
 # =========================================================
 
-async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def show_melissa(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    query = update.callback_query
+    t = get_texts(context)
+
+    menu = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "💋 Ver perfil",
+                callback_data="melissa_profile"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➡️ Siguiente Musa",
+                callback_data="next_muse"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                t["back"],
+                callback_data="user"
+            )
+        ]
+    ])
+
+    caption = (
+        "🔥💋 DESCUBRE NUESTRAS MUSAS 💋🔥\n\n"
+        "👩 Melissa · 35 años · 🇨🇴 Colombia\n\n"
+        "✨ Divertida, conversadora y lista para "
+        "compartir momentos especiales. 😈\n\n"
+        "🟢 Disponible\n"
+        "📞 25 💎/min"
+    )
+
+    try:
+        await query.message.reply_photo(
+            photo=MELISSA_PHOTO_URL,
+            caption=caption,
+            reply_markup=menu
+        )
+
+        await query.edit_message_text(
+            "📸 Melissa está aquí arriba 👆🔥"
+        )
+
+    except Exception:
+        await query.edit_message_text(
+            caption,
+            reply_markup=menu
+        )
+
+
+# =========================================================
+# BOTONES
+# =========================================================
+
+async def buttons(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
     query = update.callback_query
     await query.answer()
 
-    t = EN if context.user_data.get("language") == "en" else ES
+    t = get_texts(context)
     data = query.data
 
     if data == "home":
@@ -392,21 +600,111 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "explore":
-        await show_ana(update, context)
+        await show_melissa(update, context)
+        return
+
+    if data == "melissa_profile":
+        await query.edit_message_text(
+            "👩🔥 MELISSA · 35 AÑOS 🔥👩\n\n"
+            "🇨🇴 Colombia\n\n"
+            "✨ Me encanta conversar, conocer personas "
+            "y compartir momentos especiales. 😈\n\n"
+            "🟢 Disponible\n"
+            "📞 25 💎 por minuto\n"
+            "📸 Contenido exclusivo",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "📸 Contenido exclusivo",
+                        callback_data="melissa_content"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📞 Solicitar llamada",
+                        callback_data="melissa_call"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="explore"
+                    )
+                ]
+            ])
+        )
+        return
+
+    if data == "melissa_content":
+        await query.edit_message_text(
+            "🔒📸 CONTENIDO EXCLUSIVO 📸🔒\n\n"
+            "💎 Este contenido será accesible mediante "
+            "puntos cuando activemos el sistema de pagos.\n\n"
+            "🔐 Las fotos privadas no aparecerán en "
+            "el perfil público.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="melissa_profile"
+                    )
+                ]
+            ])
+        )
+        return
+
+    if data == "melissa_call":
+        await query.edit_message_text(
+            "📞🔥 LLAMADA PRIVADA 🔥📞\n\n"
+            "👩 Melissa\n"
+            "💎 25 puntos por minuto\n\n"
+            "😈 Las llamadas estarán disponibles "
+            "cuando activemos el sistema de llamadas.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="melissa_profile"
+                    )
+                ]
+            ])
+        )
+        return
+
+    if data == "next_muse":
+        await query.edit_message_text(
+            "✨🔥 PRÓXIMAMENTE 🔥✨\n\n"
+            "Estamos preparando más Musas para "
+            "Velvet Musa. 😈\n\n"
+            "👩 Melissa es nuestra primera Musa "
+            "de prueba.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="explore"
+                    )
+                ]
+            ])
+        )
         return
 
     if data == "balance":
         await query.edit_message_text(
             t["balance_text"],
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["recharge"],
-                    callback_data="recharge"
-                )],
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="user"
-                )]
+                [
+                    InlineKeyboardButton(
+                        t["recharge"],
+                        callback_data="recharge"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="user"
+                    )
+                ]
             ])
         )
         return
@@ -415,10 +713,12 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             t["coming"],
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="user"
-                )]
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="user"
+                    )
+                ]
             ])
         )
         return
@@ -427,71 +727,29 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             t["history_text"],
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="user"
-                )]
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="user"
+                    )
+                ]
             ])
         )
         return
 
-    if data in ["user_calls", "user_profile"]:
+    if data in [
+        "user_calls",
+        "user_profile"
+    ]:
         await query.edit_message_text(
             t["coming"],
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="user"
-                )]
-            ])
-        )
-        return
-
-    if data == "ana_profile":
-        await query.edit_message_text(
-            t["ana"],
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    "📸 Contenido exclusivo",
-                    callback_data="ana_content"
-                )],
-                [InlineKeyboardButton(
-                    "📞 Solicitar llamada",
-                    callback_data="ana_call"
-                )],
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="explore"
-                )]
-            ])
-        )
-        return
-
-    if data == "ana_content":
-        await query.edit_message_text(
-            "🔒📸 CONTENIDO EXCLUSIVO 📸🔒\n\n"
-            "Este contenido requiere puntos para desbloquearlo. 💎\n\n"
-            "😈 La función de pago estará disponible próximamente.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="ana_profile"
-                )]
-            ])
-        )
-        return
-
-    if data == "ana_call":
-        await query.edit_message_text(
-            "📞🔥 LLAMADA PRIVADA 🔥📞\n\n"
-            "👩 Ana\n"
-            "💎 25 puntos por minuto\n\n"
-            "😈 Las llamadas estarán disponibles próximamente.",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="ana_profile"
-                )]
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="user"
+                    )
+                ]
             ])
         )
         return
@@ -511,10 +769,12 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             t["coming"],
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="model"
-                )]
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="model"
+                    )
+                ]
             ])
         )
         return
@@ -534,93 +794,19 @@ async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             t["coming"],
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(
-                    t["back"],
-                    callback_data="agency"
-                )]
+                [
+                    InlineKeyboardButton(
+                        t["back"],
+                        callback_data="agency"
+                    )
+                ]
             ])
         )
         return
 
 
 # =========================================================
-# CATÁLOGO DE ANA
-# =========================================================
-
-async def show_ana(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    t = EN if context.user_data.get("language") == "en" else ES
-
-    buttons_menu = InlineKeyboardMarkup([
-        [InlineKeyboardButton(
-            "💋 Ver perfil",
-            callback_data="ana_profile"
-        )],
-        [
-            InlineKeyboardButton(
-                "➡️ Siguiente Musa",
-                callback_data="next_muse"
-            )
-        ],
-        [InlineKeyboardButton(
-            t["back"],
-            callback_data="user"
-        )]
-    ])
-
-    caption = (
-        "🔥💋 DESCUBRE NUESTRAS MUSAS 💋🔥\n\n"
-        "👩 Ana · 24 años · 🇨🇴 Colombia\n\n"
-        "✨ Conversadora, divertida y disponible para "
-        "compartir un momento especial. 😈\n\n"
-        "🟢 Disponible\n"
-        "📞 25 💎/min"
-    )
-
-    if os.path.exists(ANA_PHOTO):
-        with open(ANA_PHOTO, "rb") as photo:
-            await query.message.reply_photo(
-                photo=photo,
-                caption=caption,
-                reply_markup=buttons_menu
-            )
-
-        await query.edit_message_text(
-            "📸 Ana está aquí 👆🔥"
-        )
-    else:
-        await query.edit_message_text(
-            caption + "\n\n"
-            "📸 La foto de Ana se añadirá al catálogo próximamente.",
-            reply_markup=buttons_menu
-        )
-
-
-# =========================================================
-# SIGUIENTE MUSA
-# =========================================================
-
-async def next_muse(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    t = EN if context.user_data.get("language") == "en" else ES
-
-    await query.edit_message_text(
-        "✨🔥 PRÓXIMAMENTE 🔥✨\n\n"
-        "Estamos preparando más Musas para Velvet Musa. 😈\n\n"
-        "👩 Ana es nuestra primera Musa de prueba.",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton(
-                t["back"],
-                callback_data="explore"
-            )]
-        ])
-    )
-
-
-# =========================================================
-# INICIO
+# INICIO DEL BOT
 # =========================================================
 
 def main():
@@ -629,20 +815,23 @@ def main():
         daemon=True
     ).start()
 
-    application = Application.builder().token(TOKEN).build()
-
-    application.add_handler(
-        CommandHandler("start", start)
+    application = (
+        Application
+        .builder()
+        .token(TOKEN)
+        .build()
     )
 
     application.add_handler(
-        CallbackQueryHandler(buttons)
+        CommandHandler(
+            "start",
+            start
+        )
     )
 
     application.add_handler(
         CallbackQueryHandler(
-            next_muse,
-            pattern="^next_muse$"
+            buttons
         )
     )
 
@@ -653,7 +842,9 @@ def main():
         )
     )
 
-    print("🌟 Velvet Musa: bot iniciado correctamente 🔥")
+    print(
+        "🌟 Velvet Musa: bot iniciado correctamente 🔥"
+    )
 
     application.run_polling()
 

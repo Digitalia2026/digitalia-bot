@@ -1,12 +1,32 @@
 import os
+from threading import Thread
+
+from flask import Flask
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+)
 
 TOKEN = os.getenv("BOT_TOKEN")
 
+app_web = Flask(__name__)
+
+
+@app_web.route("/")
+def inicio():
+    return "Digitalia está funcionando."
+
+
+def iniciar_web():
+    port = int(os.environ.get("PORT", 10000))
+    app_web.run(host="0.0.0.0", port=port)
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
+    botones = [
         [InlineKeyboardButton("👩 Explorar creadoras", callback_data="explorar")],
         [InlineKeyboardButton("⭐ Mi saldo", callback_data="saldo")],
         [InlineKeyboardButton("🛒 Mis compras", callback_data="compras")],
@@ -15,13 +35,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❓ Ayuda", callback_data="ayuda")],
     ]
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    teclado = InlineKeyboardMarkup(botones)
 
     await update.message.reply_text(
         "🌟 DIGITALIA\n\n"
         "👋 Bienvenido.\n"
         "Explora creadoras y descubre su contenido.",
-        reply_markup=reply_markup
+        reply_markup=teclado,
     )
 
 
@@ -35,7 +55,7 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "compras": "🛒 Aquí aparecerán tus compras.",
         "cuenta": "👤 Aquí aparecerán los datos de tu cuenta.",
         "recargar": "💰 Próximamente podrás recargar tu saldo.",
-        "ayuda": "❓ Ayuda de Digitalia."
+        "ayuda": "❓ Ayuda de Digitalia.",
     }
 
     await query.edit_message_text(
@@ -44,15 +64,14 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    app = Application.builder().token(TOKEN).build()
+    iniciar_web()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(
-        __import__("telegram.ext", fromlist=["CallbackQueryHandler"])
-        .CallbackQueryHandler(botones)
-    )
+    application = Application.builder().token(TOKEN).build()
 
-    app.run_polling()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(botones))
+
+    application.run_polling()
 
 
 if __name__ == "__main__":

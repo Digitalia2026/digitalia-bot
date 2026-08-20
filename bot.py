@@ -1,20 +1,31 @@
 import os
-import sqlite3
+import json
+import hashlib
+import secrets
 from threading import Thread
 
 from flask import Flask
-from telegram import Update, ReplyKeyboardMarkup
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler
-from telegram.ext import MessageHandler, CallbackQueryHandler
-from telegram.ext import ContextTypes, filters
+from telegram import (
+    Update,
+    ReplyKeyboardMarkup,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters,
+)
 
-
-TOKEN = os.getenv("BOT_TOKEN")
 
 # =========================================================
 # CONFIGURACIÓN
 # =========================================================
+
+TOKEN = os.getenv("BOT_TOKEN")
 
 MELISSA_PHOTO_URL = (
     "https://i.ibb.co/VYpN8wtP/"
@@ -24,163 +35,7 @@ MELISSA_PHOTO_URL = (
 MODELS_CHANNEL = "https://t.me/+BUxwqByLYK00ZTYx"
 AGENCY_CHANNEL = "https://t.me/+MrTIOV4GlqAzNWIx"
 
-DB_FILE = "velvet_musa.db"
-
-
-# =========================================================
-# BASE DE DATOS
-# =========================================================
-
-def db_connect():
-    connection = sqlite3.connect(DB_FILE)
-    connection.row_factory = sqlite3.Row
-    return connection
-
-
-def init_database():
-    connection = db_connect()
-
-    connection.execute(
-        """
-        CREATE TABLE IF NOT EXISTS models (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            telegram_id INTEGER UNIQUE NOT NULL,
-            artistic_name TEXT NOT NULL,
-            velvet_username TEXT UNIQUE NOT NULL,
-            photo_file_id TEXT,
-            description TEXT,
-            chat_enabled INTEGER DEFAULT 0,
-            chat_price INTEGER DEFAULT 1,
-            photos_enabled INTEGER DEFAULT 0,
-            photos_price INTEGER DEFAULT 20,
-            videos_enabled INTEGER DEFAULT 0,
-            videos_price INTEGER DEFAULT 50,
-            calls_enabled INTEGER DEFAULT 0,
-            calls_price INTEGER DEFAULT 25,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-
-    connection.commit()
-    connection.close()
-
-
-def username_available(username, telegram_id):
-    username = username.lower().replace("@", "").strip()
-
-    connection = db_connect()
-
-    row = connection.execute(
-        """
-        SELECT telegram_id
-        FROM models
-        WHERE velvet_username = ?
-        """,
-        (username,)
-    ).fetchone()
-
-    connection.close()
-
-    if row is None:
-        return True
-
-    return row["telegram_id"] == telegram_id
-
-
-def save_model(telegram_id, data):
-    connection = db_connect()
-
-    connection.execute(
-        """
-        INSERT OR REPLACE INTO models (
-            telegram_id,
-            artistic_name,
-            velvet_username,
-            photo_file_id,
-            description,
-            chat_enabled,
-            chat_price,
-            photos_enabled,
-            photos_price,
-            videos_enabled,
-            videos_price,
-            calls_enabled,
-            calls_price
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            telegram_id,
-            data["artistic_name"],
-            data["velvet_username"],
-            data.get("photo_file_id"),
-            data.get("description", ""),
-            int(data["chat_enabled"]),
-            int(data["chat_price"]),
-            int(data["photos_enabled"]),
-            int(data["photos_price"]),
-            int(data["videos_enabled"]),
-            int(data["videos_price"]),
-            int(data["calls_enabled"]),
-            int(data["calls_price"])
-        )
-    )
-
-    connection.commit()
-    connection.close()
-
-
-def get_model_by_telegram_id(telegram_id):
-    connection = db_connect()
-
-    row = connection.execute(
-        """
-        SELECT *
-        FROM models
-        WHERE telegram_id = ?
-        """,
-        (telegram_id,)
-    ).fetchone()
-
-    connection.close()
-
-    return row
-
-
-def get_model_by_username(username):
-    username = username.lower().replace("@", "").strip()
-
-    connection = db_connect()
-
-    row = connection.execute(
-        """
-        SELECT *
-        FROM models
-        WHERE velvet_username = ?
-        """,
-        (username,)
-    ).fetchone()
-
-    connection.close()
-
-    return row
-
-
-def get_all_models():
-    connection = db_connect()
-
-    rows = connection.execute(
-        """
-        SELECT *
-        FROM models
-        ORDER BY created_at ASC
-        """
-    ).fetchall()
-
-    connection.close()
-
-    return rows
+DATA_FILE = "velvet_data.json"
 
 
 # =========================================================
@@ -197,15 +52,105 @@ def home():
 
 def run_web():
     port = int(os.environ.get("PORT", 10000))
-
     web.run(
         host="0.0.0.0",
-        port=port
+        port=port,
     )
 
 
 # =========================================================
-# TEXTOS ESPAÑOL
+# BASE DE DATOS SIMPLE JSON
+# =========================================================
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return {
+            "models": {},
+            "users": {},
+        }
+
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        if "models" not in data:
+            data["models"] = {}
+
+        if "users" not in data:
+            data["users"] = {}
+
+        return data
+
+    except Exception:
+        return {
+            "models": {},
+            "users": {},
+        }
+
+
+def save_data(data):
+    temp_file = DATA_FILE + ".tmp"
+
+    with open(
+        temp_file,
+        "w",
+        encoding="utf-8",
+    ) as file:
+        json.dump(
+            data,
+            file,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+    os.replace(
+        temp_file,
+        DATA_FILE,
+    )
+
+
+DATA = load_data()
+
+
+# =========================================================
+# SEGURIDAD DEL PIN
+# =========================================================
+
+def hash_pin(pin):
+    salt = secrets.token_hex(16)
+
+    password_hash = hashlib.pbkdf2_hmac(
+        "sha256",
+        pin.encode("utf-8"),
+        salt.encode("utf-8"),
+        120000,
+    ).hex()
+
+    return f"{salt}${password_hash}"
+
+
+def verify_pin(pin, stored_hash):
+    try:
+        salt, password_hash = stored_hash.split("$", 1)
+
+        calculated_hash = hashlib.pbkdf2_hmac(
+            "sha256",
+            pin.encode("utf-8"),
+            salt.encode("utf-8"),
+            120000,
+        ).hex()
+
+        return secrets.compare_digest(
+            calculated_hash,
+            password_hash,
+        )
+
+    except Exception:
+        return False
+
+
+# =========================================================
+# TEXTOS
 # =========================================================
 
 ES = {
@@ -223,7 +168,6 @@ ES = {
         "💬 Habla con ella\n"
         "📸 Descubre contenido exclusivo\n"
         "📞 Comparte un momento a solas 🔥\n\n"
-        "😈 Quizás encuentres exactamente lo que estabas buscando…\n\n"
         "👇 Elige una opción:"
     ),
 
@@ -275,99 +219,14 @@ ES = {
     ),
 
     "coming": (
-        "🚀🔥 PRÓXIMAMENTE 🔥\n\n"
+        "🚀🔥 PRÓXIMAMENTE 🔥🔥\n\n"
         "Estamos preparando esta función "
         "para Velvet Musa. 🖤😈"
-    )
+    ),
 }
 
-
-# =========================================================
-# TEXTOS INGLÉS
-# =========================================================
-
-EN = {
-    "home": "🏠 Home",
-    "user": "👤 I'm a User 😏",
-    "model": "🔥 I'm a Model 💋",
-    "agency": "🏢 I'm an Agency 😈",
-    "language": "🌎 Language",
-
-    "welcome": (
-        "🖤🔥 VELVET MUSA 🔥🖤\n\n"
-        "🌙 Some nights start with a simple «hello»… 😈\n\n"
-        "💋 Meet our Muses\n"
-        "✨ Choose the one who catches your eye\n"
-        "💬 Talk to her\n"
-        "📸 Discover exclusive content\n"
-        "📞 Spend some private time together 🔥\n\n"
-        "😈 You might find exactly what you've been looking for…\n\n"
-        "👇 Choose an option:"
-    ),
-
-    "user_title": "👤💎 USER MODE 💎👤",
-
-    "explore": "🔎 Explore Muses",
-    "balance": "⭐ My balance",
-    "recharge": "💰 Add balance",
-    "history": "📜 History",
-    "calls": "📞 My calls",
-    "profile": "👤 My profile",
-
-    "model_title": "🔥💋 MODEL MODE 💋🔥",
-
-    "model_profile": "👤 My profile",
-    "content": "📸 My content",
-    "publish": "➕ Publish content",
-    "earnings": "💰 My earnings",
-    "sales": "📊 My sales",
-    "model_calls": "📞 My calls",
-    "my_agency": "🏢 My agency",
-    "withdraw": "💸 Request withdrawal",
-    "model_channel": "📢 Exclusive Muses channel",
-
-    "agency_title": "🏢🔥 AGENCY MODE 🔥🏢",
-
-    "models": "👩‍👩‍👧 My Muses",
-    "recruit": "➕ Recruit a Muse",
-    "codes": "🔑 My codes",
-    "team_sales": "📊 Team sales",
-    "commissions": "💰 My commissions",
-    "agency_withdraw": "💸 Request withdrawal",
-    "agency_profile": "📝 My agency",
-    "create_agency": "🏗️ Create agency",
-    "agency_channel": "📢 Exclusive agency channel",
-
-    "back": "⬅️ Back",
-
-    "balance_text": (
-        "⭐💎 MY BALANCE 💎⭐\n\n"
-        "💎 Available balance: 0 points\n\n"
-        "🔥 Balance top-ups will be available soon."
-    ),
-
-    "history_text": (
-        "📜💎 HISTORY 💎📜\n\n"
-        "Your top-ups, unlocked content "
-        "and calls will appear here."
-    ),
-
-    "coming": (
-        "🚀🔥 COMING SOON 🔥\n\n"
-        "We're preparing this feature "
-        "for Velvet Musa. 🖤😈"
-    )
-}
-
-
-# =========================================================
-# IDIOMA
-# =========================================================
 
 def get_texts(context):
-    if context.user_data.get("language") == "en":
-        return EN
-
     return ES
 
 
@@ -380,10 +239,10 @@ def bottom_menu(t):
         [
             [t["home"], t["user"]],
             [t["model"], t["agency"]],
-            [t["language"]]
+            [t["language"]],
         ],
         resize_keyboard=True,
-        is_persistent=True
+        is_persistent=True,
     )
 
 
@@ -396,45 +255,45 @@ def user_menu(t):
         [
             InlineKeyboardButton(
                 t["explore"],
-                callback_data="explore"
+                callback_data="explore",
             )
         ],
         [
             InlineKeyboardButton(
                 t["balance"],
-                callback_data="balance"
+                callback_data="balance",
             )
         ],
         [
             InlineKeyboardButton(
                 t["recharge"],
-                callback_data="recharge"
+                callback_data="recharge",
             )
         ],
         [
             InlineKeyboardButton(
                 t["history"],
-                callback_data="history"
+                callback_data="history",
             )
         ],
         [
             InlineKeyboardButton(
                 t["calls"],
-                callback_data="user_calls"
+                callback_data="user_calls",
             )
         ],
         [
             InlineKeyboardButton(
                 t["profile"],
-                callback_data="user_profile"
+                callback_data="user_profile",
             )
         ],
         [
             InlineKeyboardButton(
                 t["back"],
-                callback_data="home"
+                callback_data="home",
             )
-        ]
+        ],
     ])
 
 
@@ -447,63 +306,63 @@ def model_menu(t):
         [
             InlineKeyboardButton(
                 t["model_profile"],
-                callback_data="model_profile"
+                callback_data="model_profile",
             )
         ],
         [
             InlineKeyboardButton(
                 t["content"],
-                callback_data="model_content"
+                callback_data="model_content",
             )
         ],
         [
             InlineKeyboardButton(
                 t["publish"],
-                callback_data="publish"
+                callback_data="publish",
             )
         ],
         [
             InlineKeyboardButton(
                 t["earnings"],
-                callback_data="earnings"
+                callback_data="earnings",
             )
         ],
         [
             InlineKeyboardButton(
                 t["sales"],
-                callback_data="sales"
+                callback_data="sales",
             )
         ],
         [
             InlineKeyboardButton(
                 t["model_calls"],
-                callback_data="model_calls"
+                callback_data="model_calls",
             )
         ],
         [
             InlineKeyboardButton(
                 t["my_agency"],
-                callback_data="my_agency"
+                callback_data="my_agency",
             )
         ],
         [
             InlineKeyboardButton(
                 t["withdraw"],
-                callback_data="withdraw"
+                callback_data="withdraw",
             )
         ],
         [
             InlineKeyboardButton(
                 t["model_channel"],
-                url=MODELS_CHANNEL
+                url=MODELS_CHANNEL,
             )
         ],
         [
             InlineKeyboardButton(
                 t["back"],
-                callback_data="home"
+                callback_data="home",
             )
-        ]
+        ],
     ])
 
 
@@ -516,63 +375,63 @@ def agency_menu(t):
         [
             InlineKeyboardButton(
                 t["models"],
-                callback_data="models"
+                callback_data="models",
             )
         ],
         [
             InlineKeyboardButton(
                 t["recruit"],
-                callback_data="recruit"
+                callback_data="recruit",
             )
         ],
         [
             InlineKeyboardButton(
                 t["codes"],
-                callback_data="codes"
+                callback_data="codes",
             )
         ],
         [
             InlineKeyboardButton(
                 t["team_sales"],
-                callback_data="team_sales"
+                callback_data="team_sales",
             )
         ],
         [
             InlineKeyboardButton(
                 t["commissions"],
-                callback_data="commissions"
+                callback_data="commissions",
             )
         ],
         [
             InlineKeyboardButton(
                 t["agency_withdraw"],
-                callback_data="agency_withdraw"
+                callback_data="agency_withdraw",
             )
         ],
         [
             InlineKeyboardButton(
                 t["agency_profile"],
-                callback_data="agency_profile"
+                callback_data="agency_profile",
             )
         ],
         [
             InlineKeyboardButton(
                 t["create_agency"],
-                callback_data="create_agency"
+                callback_data="create_agency",
             )
         ],
         [
             InlineKeyboardButton(
                 t["agency_channel"],
-                url=AGENCY_CHANNEL
+                url=AGENCY_CHANNEL,
             )
         ],
         [
             InlineKeyboardButton(
                 t["back"],
-                callback_data="home"
+                callback_data="home",
             )
-        ]
+        ],
     ])
 
 
@@ -580,471 +439,446 @@ def agency_menu(t):
 # REGISTRO DE MUSA
 # =========================================================
 
-def registration_start():
+def registration_cancel_keyboard():
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "❌ Cancelar",
-                callback_data="cancel_registration"
+                "❌ Cancelar registro",
+                callback_data="cancel_registration",
             )
         ]
     ])
 
 
-async def start_model_registration(
-    update,
-    context
-):
-    query = update.callback_query
+async def begin_model_access(update, context):
+    user_id = str(update.effective_user.id)
 
-    context.user_data["registration"] = {
-        "step": "artistic_name"
-    }
+    model = DATA["models"].get(user_id)
 
-    await query.edit_message_text(
-        "🔥💋 REGISTRO DE MUSA 💋🔥\n\n"
-        "Vamos a crear tu identidad dentro de "
-        "Velvet Musa.\n\n"
-        "👩 Primero:\n\n"
-        "Escribe el **nombre artístico** con el "
-        "que quieres que te conozcan.\n\n"
-        "Ejemplo: Melissa",
-        parse_mode="Markdown",
-        reply_markup=registration_start()
+    if model:
+        context.user_data["model_authenticated"] = False
+        context.user_data["model_login"] = True
+
+        await update.message.reply_text(
+            "🔐💋 ACCESO DE MUSA 💋🔐\n\n"
+            f"Hola, {model['public_name']} 🖤\n\n"
+            "Introduce tu PIN para entrar a tu panel.\n\n"
+            "🔢 El PIN debe ser el que elegiste "
+            "durante tu registro."
+        )
+
+        return
+
+    await update.message.reply_text(
+        "🔥💋 ACCESO DE MUSAS 💋🔥\n\n"
+        "No encontramos una cuenta de Musa asociada "
+        "a este Telegram.\n\n"
+        "Puedes registrarte gratis y crear tu perfil "
+        "dentro de Velvet Musa. 🖤",
+        reply_markup=InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(
+                    "✨ Registrarme como Musa",
+                    callback_data="register_model",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    "⬅️ Volver",
+                    callback_data="home",
+                )
+            ],
+        ]),
     )
 
 
-async def process_registration_message(
-    update,
-    context
-):
+async def start_registration(update, context):
+    query = update.callback_query
+
+    await query.answer()
+
+    context.user_data["registration"] = {
+        "step": "name",
+    }
+
+    await query.edit_message_text(
+        "✨💋 REGISTRO DE MUSA 💋✨\n\n"
+        "Paso 1 de 5\n\n"
+        "👩 Escribe el **nombre público** que quieres "
+        "usar en Velvet Musa.\n\n"
+        "💡 Este nombre será el que verán los usuarios.\n"
+        "Tu nombre real de Telegram no se mostrará.",
+        parse_mode="Markdown",
+        reply_markup=registration_cancel_keyboard(),
+    )
+
+
+# =========================================================
+# FINALIZAR REGISTRO
+# =========================================================
+
+async def finish_registration(update, context):
+    user_id = str(update.effective_user.id)
     registration = context.user_data.get("registration")
 
     if not registration:
-        return False
+        return
 
-    step = registration.get("step")
-    message = update.message
+    public_name = registration["name"]
+    username = registration["username"]
+    pin = registration["pin"]
+    photo_file_id = registration.get("photo_file_id")
 
-    if step == "artistic_name":
-        if not message.text:
-            await message.reply_text(
-                "❌ Escribe tu nombre artístico en texto."
+    username_key = username.lower()
+
+    # Comprobar username
+    for existing_model in DATA["models"].values():
+        if existing_model.get("username", "").lower() == username_key:
+            await update.message.reply_text(
+                "❌ Ese nombre de usuario ya está ocupado.\n\n"
+                "Escribe otro @usuario para Velvet Musa."
             )
-            return True
 
-        name = message.text.strip()
+            registration["step"] = "username"
+            return
 
-        if len(name) < 2 or len(name) > 30:
-            await message.reply_text(
-                "❌ El nombre debe tener entre "
-                "2 y 30 caracteres."
-            )
-            return True
+    DATA["models"][user_id] = {
+        "public_name": public_name,
+        "username": username,
+        "age": registration.get("age", 18),
+        "country": "🌎 Por configurar",
+        "pin_hash": hash_pin(pin),
+        "photo_file_id": photo_file_id,
 
-        registration["artistic_name"] = name
-        registration["step"] = "velvet_username"
+        "chat": True,
+        "photos": False,
+        "videos": False,
+        "calls": False,
 
-        await message.reply_text(
-            "✨ Perfecto.\n\n"
-            "Ahora elige tu **@usuario de Velvet Musa**.\n\n"
-            "🔐 Este NO tiene que ser tu usuario de "
-            "Telegram.\n\n"
-            "Ejemplo:\n"
-            "@Melissa35\n\n"
-            "Este será el nombre que verán los usuarios.",
-            parse_mode="Markdown"
-        )
+        "chat_price": 2,
+        "photo_price": 20,
+        "video_price": 35,
+        "call_price": 25,
 
-        return True
+        "balance": 0,
+        "earnings": 0,
+        "sales": 0,
+    }
 
-    if step == "velvet_username":
-        if not message.text:
-            await message.reply_text(
-                "❌ Escribe un @usuario."
-            )
-            return True
+    save_data(DATA)
 
-        username = message.text.strip().replace("@", "")
+    context.user_data.pop("registration", None)
+    context.user_data["model_authenticated"] = True
+    context.user_data.pop("model_login", None)
 
-        if not username.replace("_", "").isalnum():
-            await message.reply_text(
-                "❌ El usuario solo puede contener "
-                "letras, números y _."
-            )
-            return True
+    t = get_texts(context)
 
-        if len(username) < 3 or len(username) > 24:
-            await message.reply_text(
-                "❌ El usuario debe tener entre "
-                "3 y 24 caracteres."
-            )
-            return True
+    await update.message.reply_text(
+        "🎉🖤 ¡REGISTRO COMPLETADO! 🖤🎉\n\n"
+        f"👩 Nombre público: {public_name}\n"
+        f"🔖 Usuario: @{username}\n\n"
+        "🔐 Tu cuenta está protegida por tu PIN.\n\n"
+        "Ahora puedes configurar tus servicios "
+        "desde tu panel de Musa.",
+        reply_markup=bottom_menu(t),
+    )
 
-        telegram_id = update.effective_user.id
-
-        if not username_available(
-            username,
-            telegram_id
-        ):
-            await message.reply_text(
-                "❌ Ese @usuario ya está ocupado.\n\n"
-                "Prueba con otro."
-            )
-            return True
-
-        registration["velvet_username"] = username
-        registration["step"] = "photo"
-
-        await message.reply_text(
-            "📸 Ahora envíame tu **foto principal**.\n\n"
-            "Esta será la foto que aparecerá como "
-            "miniatura de tu perfil.\n\n"
-            "✨ Elige una foto bonita y clara."
-        )
-
-        return True
-
-    if step == "photo":
-        if not message.photo:
-            await message.reply_text(
-                "📸 Necesito que me envíes una foto.\n\n"
-                "Pulsa el clip 📎 y selecciona una imagen."
-            )
-            return True
-
-        photo = message.photo[-1]
-
-        registration["photo_file_id"] = photo.file_id
-        registration["step"] = "description"
-
-        await message.reply_text(
-            "😍 ¡Foto recibida!\n\n"
-            "Ahora escribe una **descripción corta** "
-            "para tu perfil.\n\n"
-            "Ejemplo:\n"
-            "«Soy Melissa, divertida, conversadora "
-            "y me encanta conocer personas nuevas. 😈»"
-        )
-
-        return True
-
-    if step == "description":
-        if not message.text:
-            await message.reply_text(
-                "❌ Escribe una descripción para continuar."
-            )
-            return True
-
-        description = message.text.strip()
-
-        if len(description) < 5 or len(description) > 500:
-            await message.reply_text(
-                "❌ La descripción debe tener entre "
-                "5 y 500 caracteres."
-            )
-            return True
-
-        registration["description"] = description
-        registration["step"] = "services"
-
-        await message.reply_text(
-            "🔥 Ahora vamos a elegir tus servicios.\n\n"
-            "Puedes ofrecer uno, varios o todos.\n\n"
-            "👇 Pulsa los servicios que quieras activar:",
-            reply_markup=services_keyboard(registration)
-        )
-
-        return True
-
-    return False
+    await update.message.reply_text(
+        t["model_title"],
+        reply_markup=model_menu(t),
+    )
 
 
-def services_keyboard(data):
-    def mark(enabled):
-        return "✅" if enabled else "⬜"
+# =========================================================
+# PANEL DE MUSA
+# =========================================================
 
+def get_authenticated_model(update, context):
+    user_id = str(update.effective_user.id)
+
+    if not context.user_data.get("model_authenticated"):
+        return None
+
+    return DATA["models"].get(user_id)
+
+
+def model_profile_text(model):
+    chat = "✅ ACTIVADO" if model["chat"] else "🚫 DESACTIVADO"
+    photos = "✅ ACTIVADAS" if model["photos"] else "🚫 DESACTIVADAS"
+    videos = "✅ ACTIVADOS" if model["videos"] else "🚫 DESACTIVADOS"
+    calls = "✅ ACTIVADAS" if model["calls"] else "🚫 DESACTIVADAS"
+
+    return (
+        "🔥💋 MI PERFIL DE MUSA 💋🔥\n\n"
+        f"👩 Nombre público: {model['public_name']}\n"
+        f"🔖 Usuario: @{model['username']}\n"
+        f"🎂 Edad: {model['age']}\n"
+        f"🌎 País: {model['country']}\n\n"
+        "━━━━━━━━━━━━━━\n"
+        "⚙️ SERVICIOS\n"
+        "━━━━━━━━━━━━━━\n\n"
+        f"💬 Chat: {chat}\n"
+        f"   💎 {model['chat_price']} puntos por mensaje\n\n"
+        f"📸 Fotos: {photos}\n"
+        f"   💎 {model['photo_price']} puntos\n\n"
+        f"🎥 Vídeos: {videos}\n"
+        f"   💎 {model['video_price']} puntos\n\n"
+        f"📞 Llamadas: {calls}\n"
+        f"   💎 {model['call_price']} puntos/minuto\n\n"
+        "Pulsa un servicio para activarlo o desactivarlo."
+    )
+
+
+def model_profile_keyboard():
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                f"{mark(data.get('chat_enabled', False))} 💬 Chat",
-                callback_data="reg_toggle_chat"
+                "💬 Activar/desactivar Chat",
+                callback_data="toggle_chat",
             )
         ],
         [
             InlineKeyboardButton(
-                f"{mark(data.get('photos_enabled', False))} 📸 Fotos",
-                callback_data="reg_toggle_photos"
+                "📸 Activar/desactivar Fotos",
+                callback_data="toggle_photos",
             )
         ],
         [
             InlineKeyboardButton(
-                f"{mark(data.get('videos_enabled', False))} 🎥 Vídeos",
-                callback_data="reg_toggle_videos"
+                "🎥 Activar/desactivar Vídeos",
+                callback_data="toggle_videos",
             )
         ],
         [
             InlineKeyboardButton(
-                f"{mark(data.get('calls_enabled', False))} 📞 Llamadas",
-                callback_data="reg_toggle_calls"
+                "📞 Activar/desactivar Llamadas",
+                callback_data="toggle_calls",
             )
         ],
         [
             InlineKeyboardButton(
-                "💎 Continuar",
-                callback_data="reg_prices"
+                "⬅️ Volver",
+                callback_data="model",
             )
         ],
-        [
-            InlineKeyboardButton(
-                "❌ Cancelar",
-                callback_data="cancel_registration"
-            )
-        ]
     ])
 
 
-async def registration_callback(
-    update,
-    context
-):
-    query = update.callback_query
-    await query.answer()
+# =========================================================
+# PERFIL DE MELISSA PARA USUARIOS
+# =========================================================
 
-    registration = context.user_data.get("registration")
+MELISSA_DEMO = {
+    "public_name": "Melissa",
+    "username": "Melissa35",
+    "age": 35,
+    "country": "🇨🇴 Colombia",
+    "photo": MELISSA_PHOTO_URL,
 
-    if not registration:
-        await query.edit_message_text(
-            "❌ No hay un registro activo."
-        )
-        return
+    "chat": True,
+    "photos": False,
+    "videos": False,
+    "calls": False,
 
-    data = query.data
+    "chat_price": 2,
+    "photo_price": 20,
+    "video_price": 35,
+    "call_price": 25,
+}
 
-    if data == "cancel_registration":
-        context.user_data.pop("registration", None)
 
-        t = get_texts(context)
+def muse_profile_keyboard(muse):
+    buttons = []
 
-        await query.edit_message_text(
-            t["model_title"],
-            reply_markup=model_menu(t)
-        )
-        return
-
-    if data == "reg_toggle_chat":
-        registration["chat_enabled"] = not registration.get(
-            "chat_enabled",
-            False
-        )
-
-        await query.edit_message_reply_markup(
-            reply_markup=services_keyboard(registration)
-        )
-        return
-
-    if data == "reg_toggle_photos":
-        registration["photos_enabled"] = not registration.get(
-            "photos_enabled",
-            False
-        )
-
-        await query.edit_message_reply_markup(
-            reply_markup=services_keyboard(registration)
-        )
-        return
-
-    if data == "reg_toggle_videos":
-        registration["videos_enabled"] = not registration.get(
-            "videos_enabled",
-            False
-        )
-
-        await query.edit_message_reply_markup(
-            reply_markup=services_keyboard(registration)
-        )
-        return
-
-    if data == "reg_toggle_calls":
-        registration["calls_enabled"] = not registration.get(
-            "calls_enabled",
-            False
-        )
-
-        await query.edit_message_reply_markup(
-            reply_markup=services_keyboard(registration)
-        )
-        return
-
-    if data == "reg_prices":
-        if not any([
-            registration.get("chat_enabled", False),
-            registration.get("photos_enabled", False),
-            registration.get("videos_enabled", False),
-            registration.get("calls_enabled", False)
-        ]):
-            await query.answer(
-                "Activa al menos un servicio.",
-                show_alert=True
+    if muse["chat"]:
+        buttons.append([
+            InlineKeyboardButton(
+                f"✅ 💬 Chat — {muse['chat_price']} 💎/mensaje",
+                callback_data="service_chat",
             )
-            return
+        ])
+    else:
+        buttons.append([
+            InlineKeyboardButton(
+                "🚫 💬 Chat — No disponible",
+                callback_data="inactive",
+            )
+        ])
 
-        registration["step"] = "prices"
+    if muse["photos"]:
+        buttons.append([
+            InlineKeyboardButton(
+                f"✅ 📸 Fotos — {muse['photo_price']} 💎",
+                callback_data="service_photo",
+            )
+        ])
+    else:
+        buttons.append([
+            InlineKeyboardButton(
+                "🚫 📸 Fotos — No disponible",
+                callback_data="inactive",
+            )
+        ])
 
-        await query.edit_message_text(
-            "💎 Ahora configuraremos tus precios.\n\n"
-            "Primero escribe el precio del **Chat**.\n\n"
-            "Si no activaste Chat, escribe:\n"
-            "0",
-            parse_mode="Markdown"
+    if muse["videos"]:
+        buttons.append([
+            InlineKeyboardButton(
+                f"✅ 🎥 Vídeos — {muse['video_price']} 💎",
+                callback_data="service_video",
+            )
+        ])
+    else:
+        buttons.append([
+            InlineKeyboardButton(
+                "🚫 🎥 Vídeos — No disponible",
+                callback_data="inactive",
+            )
+        ])
+
+    if muse["calls"]:
+        buttons.append([
+            InlineKeyboardButton(
+                f"✅ 📞 Llamada — {muse['call_price']} 💎/min",
+                callback_data="service_call",
+            )
+        ])
+    else:
+        buttons.append([
+            InlineKeyboardButton(
+                "🚫 📞 Llamada — No disponible",
+                callback_data="inactive",
+            )
+        ])
+
+    buttons.append([
+        InlineKeyboardButton(
+            "⬅️ Volver",
+            callback_data="explore",
         )
+    ])
+
+    return InlineKeyboardMarkup(buttons)
 
 
-async def process_price_message(
-    update,
-    context
-):
-    registration = context.user_data.get("registration")
+def muse_profile_text(muse):
+    return (
+        f"👩🔥 {muse['public_name'].upper()} · "
+        f"{muse['age']} AÑOS 🔥👩\n\n"
+        f"🔖 @{muse['username']}\n"
+        f"{muse['country']}\n\n"
+        "✨ Divertida, conversadora y lista para "
+        "compartir momentos especiales. 😈\n\n"
+        "🟢 Disponible\n\n"
+        "💎 SERVICIOS:"
+    )
 
-    if not registration:
-        return False
 
-    if registration.get("step") != "prices":
-        return False
+# =========================================================
+# MOSTRAR MELISSA
+# =========================================================
 
-    if not update.message.text:
-        return True
+async def show_melissa(update, context):
+    query = update.callback_query
+    muse = MELISSA_DEMO
 
-    text = update.message.text.strip()
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "💋 Ver perfil",
+                callback_data="melissa_profile",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➡️ Siguiente Musa",
+                callback_data="next_muse",
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "⬅️ Volver",
+                callback_data="user",
+            )
+        ],
+    ])
+
+    caption = (
+        "🔥💋 DESCUBRE NUESTRAS MUSAS 💋🔥\n\n"
+        f"👩 {muse['public_name']} · "
+        f"{muse['age']} años · "
+        f"{muse['country']}\n\n"
+        "✨ Divertida, conversadora y lista para "
+        "compartir momentos especiales. 😈\n\n"
+        "🟢 Disponible"
+    )
 
     try:
-        price = int(text)
-    except ValueError:
-        await update.message.reply_text(
-            "❌ Escribe solamente un número.\n\n"
-            "Ejemplo: 1"
-        )
-        return True
-
-    if price < 0 or price > 100000:
-        await update.message.reply_text(
-            "❌ El precio debe estar entre 0 y 100000 puntos."
-        )
-        return True
-
-    current = registration.get("price_step", "chat")
-
-    if current == "chat":
-        registration["chat_price"] = price
-        registration["price_step"] = "photos"
-
-        await update.message.reply_text(
-            "📸 Precio de las **fotos**.\n\n"
-            "Si no activaste Fotos, escribe 0.",
-            parse_mode="Markdown"
+        await query.message.reply_photo(
+            photo=muse["photo"],
+            caption=caption,
+            reply_markup=keyboard,
         )
 
-        return True
+    except Exception as error:
+        print(f"Error mostrando foto: {error}")
 
-    if current == "photos":
-        registration["photos_price"] = price
-        registration["price_step"] = "videos"
-
-        await update.message.reply_text(
-            "🎥 Precio de los **vídeos**.\n\n"
-            "Si no activaste Vídeos, escribe 0.",
-            parse_mode="Markdown"
+        await query.edit_message_text(
+            caption,
+            reply_markup=keyboard,
         )
-
-        return True
-
-    if current == "videos":
-        registration["videos_price"] = price
-        registration["price_step"] = "calls"
-
-        await update.message.reply_text(
-            "📞 Precio de las **llamadas por minuto**.\n\n"
-            "Si no activaste Llamadas, escribe 0.",
-            parse_mode="Markdown"
-        )
-
-        return True
-
-    if current == "calls":
-        registration["calls_price"] = price
-
-        telegram_id = update.effective_user.id
-
-        save_model(
-            telegram_id,
-            registration
-        )
-
-        context.user_data.pop("registration", None)
-
-        await update.message.reply_text(
-            "🎉🔥 ¡REGISTRO COMPLETADO! 🔥🎉\n\n"
-            f"👩 {registration['artistic_name']}\n"
-            f"🔤 @{registration['velvet_username']}\n\n"
-            "📝 Tu perfil ha sido creado.\n\n"
-            "🔐 Tu Telegram personal permanecerá "
-            "oculto para los usuarios.\n\n"
-            "🖤 Bienvenida a Velvet Musa.",
-            reply_markup=model_menu(get_texts(context))
-        )
-
-        return True
-
-    return False
 
 
 # =========================================================
-# INICIO
+# START
 # =========================================================
 
-async def start(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    if "language" not in context.user_data:
-        code = update.effective_user.language_code or "es"
-
-        if code.lower().startswith("en"):
-            context.user_data["language"] = "en"
-        else:
-            context.user_data["language"] = "es"
+async def start(update, context):
+    context.user_data.pop("registration", None)
+    context.user_data.pop("model_login", None)
 
     t = get_texts(context)
 
     await update.message.reply_text(
         t["welcome"],
-        reply_markup=bottom_menu(t)
+        reply_markup=bottom_menu(t),
     )
 
 
 # =========================================================
-# MENÚ DE TEXTO
+# MENÚ INFERIOR
 # =========================================================
 
-async def text_menu(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
-    if context.user_data.get("registration"):
-        if await process_registration_message(
-            update,
-            context
-        ):
-            return
-
-        if await process_price_message(
-            update,
-            context
-        ):
-            return
-
-    t = get_texts(context)
+async def text_menu(update, context):
     text = update.message.text
+    t = get_texts(context)
+
+    # -----------------------------------------------------
+    # REGISTRO
+    # -----------------------------------------------------
+
+    registration = context.user_data.get("registration")
+
+    if registration:
+        await handle_registration_text(
+            update,
+            context,
+        )
+        return
+
+    # -----------------------------------------------------
+    # LOGIN DE MUSA
+    # -----------------------------------------------------
+
+    if context.user_data.get("model_login"):
+        await handle_model_login(
+            update,
+            context,
+        )
+        return
+
+    # -----------------------------------------------------
+    # MENÚ NORMAL
+    # -----------------------------------------------------
 
     if text == t["home"]:
         await start(update, context)
@@ -1053,167 +887,259 @@ async def text_menu(
     if text == t["user"]:
         await update.message.reply_text(
             t["user_title"],
-            reply_markup=user_menu(t)
+            reply_markup=user_menu(t),
         )
         return
 
     if text == t["model"]:
-        await update.message.reply_text(
-            t["model_title"],
-            reply_markup=model_menu(t)
+        await begin_model_access(
+            update,
+            context,
         )
         return
 
     if text == t["agency"]:
         await update.message.reply_text(
             t["agency_title"],
-            reply_markup=agency_menu(t)
+            reply_markup=agency_menu(t),
         )
         return
 
     if text == t["language"]:
-        if context.user_data.get("language") == "en":
-            context.user_data["language"] = "es"
-        else:
-            context.user_data["language"] = "en"
+        await update.message.reply_text(
+            "🌎 Velvet Musa está configurado "
+            "en español. 🇪🇸",
+            reply_markup=bottom_menu(t),
+        )
 
-        t = get_texts(context)
+
+# =========================================================
+# REGISTRO — TEXTO
+# =========================================================
+
+async def handle_registration_text(update, context):
+    registration = context.user_data.get("registration")
+
+    if not registration:
+        return
+
+    text = update.message.text.strip()
+    step = registration.get("step")
+
+    # -----------------------------------------------------
+    # NOMBRE
+    # -----------------------------------------------------
+
+    if step == "name":
+        if len(text) < 2 or len(text) > 30:
+            await update.message.reply_text(
+                "❌ El nombre debe tener entre "
+                "2 y 30 caracteres.\n\n"
+                "Escribe nuevamente tu nombre público."
+            )
+            return
+
+        registration["name"] = text
+        registration["step"] = "username"
 
         await update.message.reply_text(
-            "🌎 " + t["language"] + " ✅",
-            reply_markup=bottom_menu(t)
+            "✅ Nombre guardado.\n\n"
+            "Paso 2 de 5\n\n"
+            "🔖 Ahora elige tu nombre de usuario "
+            "para Velvet Musa.\n\n"
+            "Ejemplo:\n"
+            "@Melissa35\n\n"
+            "No uses espacios."
         )
+        return
+
+    # -----------------------------------------------------
+    # USERNAME
+    # -----------------------------------------------------
+
+    if step == "username":
+        username = text.lstrip("@").strip()
+
+        if (
+            len(username) < 3
+            or len(username) > 25
+            or not username.replace("_", "").isalnum()
+        ):
+            await update.message.reply_text(
+                "❌ Ese usuario no es válido.\n\n"
+                "Usa entre 3 y 25 caracteres, "
+                "sin espacios.\n\n"
+                "Ejemplo: Melissa35"
+            )
+            return
+
+        username_lower = username.lower()
+
+        for model in DATA["models"].values():
+            if model.get("username", "").lower() == username_lower:
+                await update.message.reply_text(
+                    "❌ Ese nombre de usuario ya está ocupado.\n\n"
+                    "Elige otro."
+                )
+                return
+
+        registration["username"] = username
+        registration["step"] = "age"
+
+        await update.message.reply_text(
+            "✅ Usuario disponible.\n\n"
+            "Paso 3 de 5\n\n"
+            "🎂 Escribe tu edad.\n\n"
+            "Debes tener 18 años o más."
+        )
+        return
+
+    # -----------------------------------------------------
+    # EDAD
+    # -----------------------------------------------------
+
+    if step == "age":
+        if not text.isdigit():
+            await update.message.reply_text(
+                "❌ Escribe solamente tu edad en números."
+            )
+            return
+
+        age = int(text)
+
+        if age < 18:
+            await update.message.reply_text(
+                "❌ Para registrarte como Musa debes "
+                "tener 18 años o más."
+            )
+            return
+
+        if age > 100:
+            await update.message.reply_text(
+                "❌ Introduce una edad válida."
+            )
+            return
+
+        registration["age"] = age
+        registration["step"] = "pin"
+
+        await update.message.reply_text(
+            "✅ Edad guardada.\n\n"
+            "Paso 4 de 5\n\n"
+            "🔐 Crea un PIN de 4 a 6 números.\n\n"
+            "Este PIN protegerá tu panel de Musa.\n\n"
+            "⚠️ No compartas tu PIN con nadie."
+        )
+        return
+
+    # -----------------------------------------------------
+    # PIN
+    # -----------------------------------------------------
+
+    if step == "pin":
+        if (
+            not text.isdigit()
+            or len(text) < 4
+            or len(text) > 6
+        ):
+            await update.message.reply_text(
+                "❌ El PIN debe contener entre "
+                "4 y 6 números.\n\n"
+                "Inténtalo nuevamente."
+            )
+            return
+
+        registration["pin"] = text
+        registration["step"] = "photo"
+
+        await update.message.reply_text(
+            "✅ PIN creado de forma segura.\n\n"
+            "Paso 5 de 5\n\n"
+            "📸 Ahora envíame la foto que quieres "
+            "utilizar como perfil de Musa.\n\n"
+            "Esta será la foto que podrán ver "
+            "los usuarios."
+        )
+        return
 
 
 # =========================================================
-# MELISSA DE PRUEBA
+# REGISTRO — FOTO
 # =========================================================
 
-async def show_melissa(
-    update,
-    context
-):
-    query = update.callback_query
+async def handle_registration_photo(update, context):
+    registration = context.user_data.get("registration")
+
+    if not registration:
+        return
+
+    if registration.get("step") != "photo":
+        return
+
+    photo = update.message.photo[-1]
+
+    registration["photo_file_id"] = photo.file_id
+
+    await finish_registration(
+        update,
+        context,
+    )
+
+
+# =========================================================
+# LOGIN DE MUSA
+# =========================================================
+
+async def handle_model_login(update, context):
+    text = update.message.text.strip()
+
+    if not text.isdigit():
+        await update.message.reply_text(
+            "❌ El PIN debe contener solamente números."
+        )
+        return
+
+    if len(text) < 4 or len(text) > 6:
+        await update.message.reply_text(
+            "❌ El PIN debe tener entre 4 y 6 números."
+        )
+        return
+
+    user_id = str(update.effective_user.id)
+    model = DATA["models"].get(user_id)
+
+    if not model:
+        context.user_data.pop("model_login", None)
+
+        await update.message.reply_text(
+            "❌ No encontramos tu cuenta de Musa."
+        )
+        return
+
+    if not verify_pin(
+        text,
+        model.get("pin_hash", ""),
+    ):
+        await update.message.reply_text(
+            "❌ PIN incorrecto.\n\n"
+            "Inténtalo nuevamente."
+        )
+        return
+
+    context.user_data["model_authenticated"] = True
+    context.user_data.pop("model_login", None)
+
     t = get_texts(context)
 
-    menu = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "💋 Ver perfil",
-                callback_data="melissa_profile"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "➡️ Siguiente Musa",
-                callback_data="next_muse"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["back"],
-                callback_data="user"
-            )
-        ]
-    ])
-
-    caption = (
-        "🔥💋 DESCUBRE NUESTRAS MUSAS 💋🔥\n\n"
-        "👩 Melissa · 35 años · 🇨🇴 Colombia\n\n"
-        "✨ Divertida, conversadora y lista para "
-        "compartir momentos especiales. 😈\n\n"
-        "🟢 Disponible\n"
-        "💬 Chat: 1 💎/mensaje\n"
-        "📸 Fotos: 20 💎\n"
-        "🎥 Vídeos: 50 💎\n"
-        "📞 Llamada: 25 💎/min"
+    await update.message.reply_text(
+        "🔓💋 ACCESO CONCEDIDO 💋🔓\n\n"
+        f"Bienvenida, {model['public_name']} 🖤",
+        reply_markup=bottom_menu(t),
     )
 
-    try:
-        await query.message.reply_photo(
-            photo=MELISSA_PHOTO_URL,
-            caption=caption,
-            reply_markup=menu
-        )
-
-        await query.answer()
-
-    except Exception:
-        await query.edit_message_text(
-            caption,
-            reply_markup=menu
-        )
-
-
-# =========================================================
-# PERFIL DE MUSA
-# =========================================================
-
-def model_profile_keyboard(
-    model,
-    back_callback="explore"
-):
-    buttons = []
-
-    if model["chat_enabled"]:
-        buttons.append([
-            InlineKeyboardButton(
-                f"💬 Chatear · {model['chat_price']} 💎/mensaje",
-                callback_data=f"chat_{model['id']}"
-            )
-        ])
-
-    if model["photos_enabled"]:
-        buttons.append([
-            InlineKeyboardButton(
-                f"📸 Fotos · {model['photos_price']} 💎",
-                callback_data=f"photos_{model['id']}"
-            )
-        ])
-
-    if model["videos_enabled"]:
-        buttons.append([
-            InlineKeyboardButton(
-                f"🎥 Vídeos · {model['videos_price']} 💎",
-                callback_data=f"videos_{model['id']}"
-            )
-        ])
-
-    if model["calls_enabled"]:
-        buttons.append([
-            InlineKeyboardButton(
-                f"📞 Llamada · {model['calls_price']} 💎/min",
-                callback_data=f"call_{model['id']}"
-            )
-        ])
-
-    buttons.append([
-        InlineKeyboardButton(
-            "⬅️ Volver",
-            callback_data=back_callback
-        )
-    ])
-
-    return InlineKeyboardMarkup(buttons)
-
-
-async def show_model_profile(
-    update,
-    context,
-    model
-):
-    query = update.callback_query
-
-    text = (
-        f"👩🔥 {model['artistic_name'].upper()} 🔥👩\n\n"
-        f"🔤 @{model['velvet_username']}\n\n"
-        f"📝 {model['description']}\n\n"
-        "✨ Elige cómo quieres conocerla:"
-    )
-
-    await query.edit_message_text(
-        text,
-        reply_markup=model_profile_keyboard(model)
+    await update.message.reply_text(
+        t["model_title"],
+        reply_markup=model_menu(t),
     )
 
 
@@ -1221,62 +1147,21 @@ async def show_model_profile(
 # BOTONES
 # =========================================================
 
-async def buttons(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE
-):
+async def buttons(update, context):
     query = update.callback_query
+    data = query.data
+    t = get_texts(context)
+
     await query.answer()
 
-    t = get_texts(context)
-    data = query.data
+    # =====================================================
+    # REGISTRO
+    # =====================================================
 
-    # -----------------------------------------------------
-    # MENÚS PRINCIPALES
-    # -----------------------------------------------------
-
-    if data == "home":
-        await query.edit_message_text(
-            t["welcome"]
-        )
-        return
-
-    if data == "user":
-        await query.edit_message_text(
-            t["user_title"],
-            reply_markup=user_menu(t)
-        )
-        return
-
-    if data == "model":
-        await query.edit_message_text(
-            t["model_title"],
-            reply_markup=model_menu(t)
-        )
-        return
-
-    if data == "agency":
-        await query.edit_message_text(
-            t["agency_title"],
-            reply_markup=agency_menu(t)
-        )
-        return
-
-    # -----------------------------------------------------
-    # REGISTRO DE MUSA
-    # -----------------------------------------------------
-
-    if data == "start_model_registration":
-        await start_model_registration(
+    if data == "register_model":
+        await start_registration(
             update,
-            context
-        )
-        return
-
-    if data.startswith("reg_"):
-        await registration_callback(
-            update,
-            context
+            context,
         )
         return
 
@@ -1284,211 +1169,171 @@ async def buttons(
         context.user_data.pop("registration", None)
 
         await query.edit_message_text(
-            t["model_title"],
-            reply_markup=model_menu(t)
+            "❌ Registro cancelado.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Volver",
+                        callback_data="home",
+                    )
+                ]
+            ]),
         )
         return
 
-    # -----------------------------------------------------
+    # =====================================================
+    # NAVEGACIÓN
+    # =====================================================
+
+    if data == "home":
+        await query.edit_message_text(
+            t["welcome"],
+            reply_markup=None,
+        )
+        return
+
+    if data == "user":
+        await query.edit_message_text(
+            t["user_title"],
+            reply_markup=user_menu(t),
+        )
+        return
+
+    if data == "model":
+        model = get_authenticated_model(
+            update,
+            context,
+        )
+
+        if not model:
+            await query.edit_message_text(
+                "🔐 Debes iniciar sesión como Musa "
+                "para acceder a este panel.",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton(
+                            "⬅️ Volver",
+                            callback_data="home",
+                        )
+                    ]
+                ]),
+            )
+            return
+
+        await query.edit_message_text(
+            t["model_title"],
+            reply_markup=model_menu(t),
+        )
+        return
+
+    if data == "agency":
+        await query.edit_message_text(
+            t["agency_title"],
+            reply_markup=agency_menu(t),
+        )
+        return
+
+    # =====================================================
     # EXPLORAR
-    # -----------------------------------------------------
+    # =====================================================
 
     if data == "explore":
         await show_melissa(
             update,
-            context
+            context,
         )
         return
 
-    # -----------------------------------------------------
+    # =====================================================
     # PERFIL MELISSA
-    # -----------------------------------------------------
+    # =====================================================
 
     if data == "melissa_profile":
+        muse = MELISSA_DEMO
+
         await query.edit_message_text(
-            "👩🔥 MELISSA · 35 AÑOS 🔥👩\n\n"
-            "🔤 @Melissa35\n"
-            "🇨🇴 Colombia\n\n"
-            "✨ Divertida, conversadora y lista para "
-            "compartir momentos especiales. 😈\n\n"
-            "🟢 Disponible\n\n"
-            "💬 Chat — 1 💎/mensaje\n"
-            "📸 Fotos — 20 💎\n"
-            "🎥 Vídeos — 50 💎\n"
-            "📞 Llamada — 25 💎/min\n\n"
-            "🔐 Cada servicio se cobra por separado.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "💬 Chatear · 1 💎/mensaje",
-                        callback_data="melissa_chat"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "📸 Fotos · 20 💎",
-                        callback_data="melissa_photos"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🎥 Vídeos · 50 💎",
-                        callback_data="melissa_videos"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "📞 Llamada · 25 💎/min",
-                        callback_data="melissa_call"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="explore"
-                    )
-                ]
-            ])
+            muse_profile_text(muse),
+            reply_markup=muse_profile_keyboard(muse),
         )
         return
 
-    # -----------------------------------------------------
-    # MELISSA - CHAT
-    # -----------------------------------------------------
+    # =====================================================
+    # SERVICIOS MELISSA
+    # =====================================================
 
-    if data == "melissa_chat":
-        await query.edit_message_text(
-            "💬🔥 CHAT CON MELISSA 🔥💬\n\n"
-            "👩 Melissa · @Melissa35\n\n"
-            "💎 Precio: 1 punto por mensaje.\n\n"
-            "😈 El sistema de chat intermediado "
-            "estará disponible en la siguiente etapa.\n\n"
-            "🔐 Melissa nunca verá tu número "
-            "ni tu usuario personal de Telegram.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="melissa_profile"
-                    )
-                ]
-            ])
+    if data == "inactive":
+        await query.answer(
+            "🚫 Este servicio no está disponible ahora.",
+            show_alert=True,
         )
         return
 
-    # -----------------------------------------------------
-    # MELISSA - FOTOS
-    # -----------------------------------------------------
+    if data == "service_chat":
+        muse = MELISSA_DEMO
 
-    if data == "melissa_photos":
         await query.edit_message_text(
-            "📸🔒 FOTOS EXCLUSIVAS 🔒📸\n\n"
-            "💎 Precio: 20 puntos.\n\n"
-            "El contenido privado no aparecerá "
-            "en el perfil público.\n\n"
-            "🔐 Cuando conectemos el sistema de pagos, "
-            "la foto se entregará como contenido protegido.",
+            "💬🖤 CHAT CON MELISSA 🖤💬\n\n"
+            f"👩 {muse['public_name']}\n"
+            f"🔖 @{muse['username']}\n\n"
+            f"💎 Precio: {muse['chat_price']} puntos "
+            "por mensaje\n\n"
+            "El sistema de saldo y chat será activado "
+            "en la siguiente etapa.",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="melissa_profile"
+                        "⬅️ Volver al perfil",
+                        callback_data="melissa_profile",
                     )
                 ]
-            ])
+            ]),
         )
         return
 
-    # -----------------------------------------------------
-    # MELISSA - VÍDEOS
-    # -----------------------------------------------------
-
-    if data == "melissa_videos":
-        await query.edit_message_text(
-            "🎥🔒 VÍDEOS EXCLUSIVOS 🔒🎥\n\n"
-            "💎 Precio: 50 puntos.\n\n"
-            "Los vídeos privados no aparecerán "
-            "en el perfil público.\n\n"
-            "🔐 Cuando conectemos el sistema de pagos, "
-            "se enviarán como contenido protegido.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="melissa_profile"
-                    )
-                ]
-            ])
+    if data == "service_photo":
+        await query.answer(
+            "📸 Este servicio todavía no está activo.",
+            show_alert=True,
         )
         return
 
-    # -----------------------------------------------------
-    # MELISSA - LLAMADA
-    # -----------------------------------------------------
-
-    if data == "melissa_call":
-        await query.edit_message_text(
-            "📞🔥 LLAMADA PRIVADA 🔥📞\n\n"
-            "👩 Melissa · @Melissa35\n"
-            "💎 25 puntos por minuto.\n\n"
-            "🔐 El número personal de Melissa "
-            "nunca será mostrado al usuario.\n\n"
-            "La comunicación se realizará mediante "
-            "Velvet Musa cuando activemos el sistema.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="melissa_profile"
-                    )
-                ]
-            ])
+    if data == "service_video":
+        await query.answer(
+            "🎥 Este servicio todavía no está activo.",
+            show_alert=True,
         )
         return
 
-    # -----------------------------------------------------
+    if data == "service_call":
+        await query.answer(
+            "📞 Este servicio todavía no está activo.",
+            show_alert=True,
+        )
+        return
+
+    # =====================================================
     # SIGUIENTE MUSA
-    # -----------------------------------------------------
+    # =====================================================
 
     if data == "next_muse":
-        models = get_all_models()
-
-        if models:
-            await query.edit_message_text(
-                "👩🔥 MUSAS REGISTRADAS 🔥👩\n\n"
-                f"Actualmente tenemos {len(models)} "
-                "Musa(s) registrada(s).\n\n"
-                "✨ Pronto mostraremos sus perfiles "
-                "individualmente.",
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "⬅️ Volver",
-                            callback_data="explore"
-                        )
-                    ]
-                ])
-            )
-        else:
-            await query.edit_message_text(
-                "✨🔥 PRÓXIMAMENTE 🔥✨\n\n"
-                "Estamos preparando más Musas para "
-                "Velvet Musa. 😈",
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "⬅️ Volver",
-                            callback_data="explore"
-                        )
-                    ]
-                ])
-            )
-
+        await query.edit_message_text(
+            "✨🔥 PRÓXIMAMENTE 🔥✨\n\n"
+            "Estamos preparando más Musas para "
+            "Velvet Musa. 🖤😈",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Volver",
+                        callback_data="explore",
+                    )
+                ]
+            ]),
+        )
         return
 
-    # -----------------------------------------------------
-    # SALDO
-    # -----------------------------------------------------
+    # =====================================================
+    # USUARIO
+    # =====================================================
 
     if data == "balance":
         await query.edit_message_text(
@@ -1497,22 +1342,18 @@ async def buttons(
                 [
                     InlineKeyboardButton(
                         t["recharge"],
-                        callback_data="recharge"
+                        callback_data="recharge",
                     )
                 ],
                 [
                     InlineKeyboardButton(
                         t["back"],
-                        callback_data="user"
+                        callback_data="user",
                     )
-                ]
-            ])
+                ],
+            ]),
         )
         return
-
-    # -----------------------------------------------------
-    # RECARGAR
-    # -----------------------------------------------------
 
     if data == "recharge":
         await query.edit_message_text(
@@ -1521,16 +1362,12 @@ async def buttons(
                 [
                     InlineKeyboardButton(
                         t["back"],
-                        callback_data="user"
+                        callback_data="user",
                     )
                 ]
-            ])
+            ]),
         )
         return
-
-    # -----------------------------------------------------
-    # HISTORIAL
-    # -----------------------------------------------------
 
     if data == "history":
         await query.edit_message_text(
@@ -1539,20 +1376,16 @@ async def buttons(
                 [
                     InlineKeyboardButton(
                         t["back"],
-                        callback_data="user"
+                        callback_data="user",
                     )
                 ]
-            ])
+            ]),
         )
         return
 
-    # -----------------------------------------------------
-    # PERFIL / LLAMADAS USUARIO
-    # -----------------------------------------------------
-
     if data in [
         "user_calls",
-        "user_profile"
+        "user_profile",
     ]:
         await query.edit_message_text(
             t["coming"],
@@ -1560,55 +1393,175 @@ async def buttons(
                 [
                     InlineKeyboardButton(
                         t["back"],
-                        callback_data="user"
+                        callback_data="user",
                     )
                 ]
-            ])
+            ]),
         )
         return
 
-    # -----------------------------------------------------
-    # PERFIL MODELO ACTUAL
-    # -----------------------------------------------------
+    # =====================================================
+    # PERFIL DE MUSA AUTENTICADA
+    # =====================================================
 
     if data == "model_profile":
-        telegram_id = update.effective_user.id
-
-        model = get_model_by_telegram_id(
-            telegram_id
+        model = get_authenticated_model(
+            update,
+            context,
         )
 
-        if model is None:
-            await query.edit_message_text(
-                "👩🔥 MI PERFIL 🔥👩\n\n"
-                "Todavía no tienes un perfil creado.\n\n"
-                "💋 Pulsa el botón para registrarte.",
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "🔥 Crear mi perfil",
-                            callback_data="start_model_registration"
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            "⬅️ Volver",
-                            callback_data="model"
-                        )
-                    ]
-                ])
+        if not model:
+            await query.answer(
+                "🔐 Debes iniciar sesión primero.",
+                show_alert=True,
             )
             return
 
-        await show_registered_model(
-            query,
-            model
+        await query.edit_message_text(
+            model_profile_text(model),
+            reply_markup=model_profile_keyboard(),
         )
         return
 
-    # -----------------------------------------------------
-    # ACCIONES MODELO
-    # -----------------------------------------------------
+    # =====================================================
+    # ACTIVAR / DESACTIVAR CHAT
+    # =====================================================
+
+    if data == "toggle_chat":
+        model = get_authenticated_model(
+            update,
+            context,
+        )
+
+        if not model:
+            await query.answer(
+                "🔐 Sesión no válida.",
+                show_alert=True,
+            )
+            return
+
+        model["chat"] = not model["chat"]
+        save_data(DATA)
+
+        status = (
+            "✅ Chat activado"
+            if model["chat"]
+            else "🚫 Chat desactivado"
+        )
+
+        await query.answer(status)
+
+        await query.edit_message_text(
+            model_profile_text(model),
+            reply_markup=model_profile_keyboard(),
+        )
+        return
+
+    # =====================================================
+    # ACTIVAR / DESACTIVAR FOTOS
+    # =====================================================
+
+    if data == "toggle_photos":
+        model = get_authenticated_model(
+            update,
+            context,
+        )
+
+        if not model:
+            await query.answer(
+                "🔐 Sesión no válida.",
+                show_alert=True,
+            )
+            return
+
+        model["photos"] = not model["photos"]
+        save_data(DATA)
+
+        status = (
+            "✅ Fotos activadas"
+            if model["photos"]
+            else "🚫 Fotos desactivadas"
+        )
+
+        await query.answer(status)
+
+        await query.edit_message_text(
+            model_profile_text(model),
+            reply_markup=model_profile_keyboard(),
+        )
+        return
+
+    # =====================================================
+    # ACTIVAR / DESACTIVAR VÍDEOS
+    # =====================================================
+
+    if data == "toggle_videos":
+        model = get_authenticated_model(
+            update,
+            context,
+        )
+
+        if not model:
+            await query.answer(
+                "🔐 Sesión no válida.",
+                show_alert=True,
+            )
+            return
+
+        model["videos"] = not model["videos"]
+        save_data(DATA)
+
+        status = (
+            "✅ Vídeos activados"
+            if model["videos"]
+            else "🚫 Vídeos desactivados"
+        )
+
+        await query.answer(status)
+
+        await query.edit_message_text(
+            model_profile_text(model),
+            reply_markup=model_profile_keyboard(),
+        )
+        return
+
+    # =====================================================
+    # ACTIVAR / DESACTIVAR LLAMADAS
+    # =====================================================
+
+    if data == "toggle_calls":
+        model = get_authenticated_model(
+            update,
+            context,
+        )
+
+        if not model:
+            await query.answer(
+                "🔐 Sesión no válida.",
+                show_alert=True,
+            )
+            return
+
+        model["calls"] = not model["calls"]
+        save_data(DATA)
+
+        status = (
+            "✅ Llamadas activadas"
+            if model["calls"]
+            else "🚫 Llamadas desactivadas"
+        )
+
+        await query.answer(status)
+
+        await query.edit_message_text(
+            model_profile_text(model),
+            reply_markup=model_profile_keyboard(),
+        )
+        return
+
+    # =====================================================
+    # FUNCIONES MODELO
+    # =====================================================
 
     model_actions = [
         "model_content",
@@ -1617,26 +1570,38 @@ async def buttons(
         "sales",
         "model_calls",
         "my_agency",
-        "withdraw"
+        "withdraw",
     ]
 
     if data in model_actions:
+        model = get_authenticated_model(
+            update,
+            context,
+        )
+
+        if not model:
+            await query.answer(
+                "🔐 Debes iniciar sesión como Musa.",
+                show_alert=True,
+            )
+            return
+
         await query.edit_message_text(
             t["coming"],
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
                         t["back"],
-                        callback_data="model"
+                        callback_data="model",
                     )
                 ]
-            ])
+            ]),
         )
         return
 
-    # -----------------------------------------------------
-    # ACCIONES AGENCIA
-    # -----------------------------------------------------
+    # =====================================================
+    # AGENCIA
+    # =====================================================
 
     agency_actions = [
         "models",
@@ -1646,7 +1611,7 @@ async def buttons(
         "commissions",
         "agency_withdraw",
         "agency_profile",
-        "create_agency"
+        "create_agency",
     ]
 
     if data in agency_actions:
@@ -1656,211 +1621,41 @@ async def buttons(
                 [
                     InlineKeyboardButton(
                         t["back"],
-                        callback_data="agency"
+                        callback_data="agency",
                     )
                 ]
-            ])
-        )
-        return
-
-    # -----------------------------------------------------
-    # ACCIONES DE UNA MUSA REGISTRADA
-    # -----------------------------------------------------
-
-    if data.startswith("chat_"):
-        model_id = int(data.split("_")[1])
-
-        await query.edit_message_text(
-            "💬🔥 CHAT 🔥💬\n\n"
-            "El sistema de chat intermediado "
-            "se conectará en la siguiente etapa.\n\n"
-            "🔐 La identidad personal de la Musa "
-            "permanecerá protegida.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data=f"profile_{model_id}"
-                    )
-                ]
-            ])
-        )
-        return
-
-    if data.startswith("photos_"):
-        model_id = int(data.split("_")[1])
-
-        await query.edit_message_text(
-            "📸🔒 FOTOS EXCLUSIVAS 🔒📸\n\n"
-            "El sistema de compra de contenido "
-            "se conectará en la siguiente etapa.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data=f"profile_{model_id}"
-                    )
-                ]
-            ])
-        )
-        return
-
-    if data.startswith("videos_"):
-        model_id = int(data.split("_")[1])
-
-        await query.edit_message_text(
-            "🎥🔒 VÍDEOS EXCLUSIVOS 🔒🎥\n\n"
-            "El sistema de compra de contenido "
-            "se conectará en la siguiente etapa.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data=f"profile_{model_id}"
-                    )
-                ]
-            ])
-        )
-        return
-
-    if data.startswith("call_"):
-        model_id = int(data.split("_")[1])
-
-        await query.edit_message_text(
-            "📞🔥 LLAMADA PRIVADA 🔥📞\n\n"
-            "El sistema de llamadas intermediadas "
-            "se conectará en la siguiente etapa.\n\n"
-            "🔐 Ningún número personal será mostrado.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data=f"profile_{model_id}"
-                    )
-                ]
-            ])
-        )
-        return
-
-    if data.startswith("profile_"):
-        model_id = int(data.split("_")[1])
-
-        connection = db_connect()
-
-        model = connection.execute(
-            """
-            SELECT *
-            FROM models
-            WHERE id = ?
-            """,
-            (model_id,)
-        ).fetchone()
-
-        connection.close()
-
-        if model is None:
-            await query.edit_message_text(
-                "❌ Esta Musa ya no está disponible.",
-                reply_markup=InlineKeyboardMarkup([
-                    [
-                        InlineKeyboardButton(
-                            "⬅️ Volver",
-                            callback_data="explore"
-                        )
-                    ]
-                ])
-            )
-            return
-
-        await show_registered_model(
-            query,
-            model
+            ]),
         )
         return
 
 
 # =========================================================
-# MOSTRAR PERFIL REGISTRADO
+# MANEJADOR DE FOTOS
 # =========================================================
 
-async def show_registered_model(
-    query,
-    model
-):
-    text = (
-        f"👩🔥 {model['artistic_name'].upper()} 🔥👩\n\n"
-        f"🔤 @{model['velvet_username']}\n\n"
-        f"📝 {model['description']}\n\n"
-        "✨ Servicios disponibles:"
-    )
+async def photo_handler(update, context):
+    registration = context.user_data.get("registration")
 
-    await query.edit_message_text(
-        text,
-        reply_markup=model_profile_keyboard(
-            model,
-            back_callback="model"
+    if registration:
+        await handle_registration_photo(
+            update,
+            context,
         )
-    )
 
 
 # =========================================================
-# MENSAJES DE FOTOS Y TEXTO
-# =========================================================
-
-async def message_router(
-    update,
-    context
-):
-    if context.user_data.get("registration"):
-        registration = context.user_data["registration"]
-
-        if registration.get("step") == "photo":
-            handled = await process_registration_message(
-                update,
-                context
-            )
-
-            if handled:
-                return
-
-        if registration.get("step") in [
-            "artistic_name",
-            "velvet_username",
-            "description"
-        ]:
-            handled = await process_registration_message(
-                update,
-                context
-            )
-
-            if handled:
-                return
-
-        if registration.get("step") == "prices":
-            handled = await process_price_message(
-                update,
-                context
-            )
-
-            if handled:
-                return
-
-    await text_menu(
-        update,
-        context
-    )
-
-
-# =========================================================
-# MAIN
+# INICIO DEL BOT
 # =========================================================
 
 def main():
-    init_database()
+    if not TOKEN:
+        raise RuntimeError(
+            "No se encontró BOT_TOKEN en las variables de entorno."
+        )
 
     Thread(
         target=run_web,
-        daemon=True
+        daemon=True,
     ).start()
 
     application = (
@@ -1873,27 +1668,27 @@ def main():
     application.add_handler(
         CommandHandler(
             "start",
-            start
+            start,
         )
     )
 
     application.add_handler(
         CallbackQueryHandler(
-            buttons
+            buttons,
         )
     )
 
     application.add_handler(
         MessageHandler(
             filters.PHOTO,
-            message_router
+            photo_handler,
         )
     )
 
     application.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
-            message_router
+            text_menu,
         )
     )
 
@@ -1903,6 +1698,10 @@ def main():
 
     application.run_polling()
 
+
+# =========================================================
+# EJECUTAR
+# =========================================================
 
 if __name__ == "__main__":
     main()

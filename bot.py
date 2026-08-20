@@ -230,7 +230,23 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif query.data == "inicio":
-        await start(update, context)
+    botones = [
+        [InlineKeyboardButton("👩 Explorar creadoras", callback_data="explorar")],
+        [InlineKeyboardButton("👩‍💻 Quiero ser creadora", callback_data="creadora")],
+        [InlineKeyboardButton("🏢 Soy agencia", callback_data="agencia")],
+        [InlineKeyboardButton("⭐ Mi saldo", callback_data="saldo")],
+        [InlineKeyboardButton("🛒 Mis compras", callback_data="compras")],
+        [InlineKeyboardButton("👤 Mi cuenta", callback_data="cuenta")],
+        [InlineKeyboardButton("💰 Recargar", callback_data="recargar")],
+        [InlineKeyboardButton("❓ Ayuda", callback_data="ayuda")],
+    ]
+
+    await query.edit_message_text(
+        "🌟 DIGITALIA\n\n"
+        "👋 Bienvenido.\n"
+        "Explora creadoras y descubre contenido exclusivo.",
+        reply_markup=InlineKeyboardMarkup(botones),
+    )
 
 
 def main():

@@ -24,7 +24,7 @@ app_web = Flask(__name__)
 
 @app_web.route("/")
 def inicio_web():
-    return "Digitalia está funcionando."
+    return "🌟 Digitalia está funcionando 🔥"
 
 
 def iniciar_web():
@@ -32,233 +32,412 @@ def iniciar_web():
     app_web.run(host="0.0.0.0", port=port)
 
 
-# =========================
-# MENÚ INFERIOR DE TELEGRAM
-# =========================
+# ==================================================
+# 📱 MENÚ INFERIOR
+# ==================================================
 
 def menu_inferior():
+
     return ReplyKeyboardMarkup(
         [
-            ["🏠 Inicio", "👩 Creadoras", "💰 Saldo"],
-            ["🛒 Compras", "👤 Mi cuenta"],
+            ["🏠 Inicio", "👤 Soy Usuario"],
+            ["🔥 Soy Modelo", "🏢 Soy Agencia"],
         ],
         resize_keyboard=True,
         is_persistent=True
     )
 
 
-# =========================
-# MENÚ PRINCIPAL
-# =========================
+# ==================================================
+# 🌟 MENÚ PRINCIPAL
+# ==================================================
 
 def menu_principal():
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "👩‍💻 Quiero ser creadora",
-                callback_data="creadora"
+                "👤 Soy Usuario",
+                callback_data="usuario"
             )
         ],
         [
             InlineKeyboardButton(
-                "🏢 Soy agencia",
+                "🔥 Soy Modelo",
+                callback_data="modelo"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🏢 Soy Agencia",
                 callback_data="agencia"
             )
+        ]
+    ])
+
+
+# ==================================================
+# 👋 MENSAJE DE BIENVENIDA
+# ==================================================
+
+async def bienvenida(update: Update):
+
+    await update.message.reply_text(
+        "🌟🔥 ¡BIENVENIDO A DIGITALIA! 🔥🌟\n\n"
+
+        "💎 Un espacio donde puedes "
+        "✨ descubrir, conectar y ganar.\n\n"
+
+        "👤 ¿Buscas contenido y nuevas experiencias?\n"
+        "🔎 Explora modelos, descubre perfiles "
+        "y desbloquea contenido exclusivo.\n\n"
+
+        "🔥 ¿Quieres ganar dinero?\n"
+        "📸 Conviértete en modelo, publica tu contenido "
+        "y recibe pagos.\n\n"
+
+        "🏢 ¿Tienes una agencia?\n"
+        "👩‍👩‍👧 Recluta modelos, crea tu equipo "
+        "y gana comisiones.\n\n"
+
+        "💎 Tú eliges cómo vivir Digitalia.\n\n"
+
+        "👇 Selecciona una opción para comenzar:",
+        reply_markup=menu_inferior()
+    )
+
+    await update.message.reply_text(
+        "✨ ¿Qué quieres hacer?",
+        reply_markup=menu_principal()
+    )
+
+
+# ==================================================
+# 🚀 START
+# ==================================================
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    await bienvenida(update)
+
+
+# ==================================================
+# 👤 MENÚ USUARIO
+# ==================================================
+
+def menu_usuario():
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "🔎 Explorar modelos",
+                callback_data="explorar"
+            )
         ],
         [
             InlineKeyboardButton(
-                "💰 Recargar",
+                "⭐ Mi saldo",
+                callback_data="saldo"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💰 Recargar saldo",
                 callback_data="recargar"
             )
         ],
         [
             InlineKeyboardButton(
-                "❓ Ayuda",
-                callback_data="ayuda"
+                "🛍️ Mis compras",
+                callback_data="compras"
             )
         ],
+        [
+            InlineKeyboardButton(
+                "📞 Mis llamadas",
+                callback_data="mis_llamadas"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "👤 Mi perfil",
+                callback_data="perfil"
+            )
+        ]
     ])
 
 
-async def mostrar_inicio(query):
+# ==================================================
+# 🔥 MENÚ MODELO
+# ==================================================
 
-    await query.edit_message_text(
-        "🌟 DIGITALIA\n\n"
-        "👋 Bienvenido.\n\n"
-        "Compra contenido exclusivo, "
-        "descubre creadoras y próximamente "
-        "podrás interactuar con ellas.",
-        reply_markup=menu_principal()
-    )
+def menu_modelo():
+
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "👤 Mi perfil",
+                callback_data="perfil_modelo"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📸 Mi contenido",
+                callback_data="contenido_modelo"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➕ Publicar contenido",
+                callback_data="publicar"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💰 Mis ganancias",
+                callback_data="ganancias"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📊 Mis ventas",
+                callback_data="ventas"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📞 Mis llamadas",
+                callback_data="llamadas_modelo"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🏢 Mi agencia",
+                callback_data="mi_agencia"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💸 Solicitar retiro",
+                callback_data="retiro"
+            )
+        ]
+    ])
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ==================================================
+# 🏢 MENÚ AGENCIA
+# ==================================================
 
-    await update.message.reply_text(
-        "🌟 DIGITALIA\n\n"
-        "👋 Bienvenido.\n\n"
-        "Usa el menú de abajo para navegar por Digitalia.",
-        reply_markup=menu_inferior()
-    )
+def menu_agencia():
 
-    await update.message.reply_text(
-        "Selecciona una opción:",
-        reply_markup=menu_principal()
-    )
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "👩‍👩‍👧 Mis modelos",
+                callback_data="mis_modelos"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "➕ Reclutar modelo",
+                callback_data="reclutar"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🔑 Mis códigos",
+                callback_data="codigos"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📊 Ventas del equipo",
+                callback_data="ventas_equipo"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💰 Mis comisiones",
+                callback_data="comisiones"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "💸 Solicitar retiro",
+                callback_data="retiro_agencia"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "📝 Mi agencia",
+                callback_data="perfil_agencia"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "🏗️ Crear agencia",
+                callback_data="crear_agencia"
+            )
+        ]
+    ])
 
 
-# =========================
-# MENÚ INFERIOR
-# =========================
+# ==================================================
+# 📱 MENÚ INFERIOR
+# ==================================================
 
 async def menu_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     texto = update.message.text
 
+    # 🏠 INICIO
+
     if texto == "🏠 Inicio":
 
         await update.message.reply_text(
-            "🌟 DIGITALIA\n\n"
-            "👋 Bienvenido.\n\n"
-            "Selecciona una opción:",
+            "🌟🔥 DIGITALIA 🔥🌟\n\n"
+            "👋 ¡Qué bueno verte otra vez!\n\n"
+            "💎 ¿Qué quieres hacer hoy?",
             reply_markup=menu_principal()
         )
 
-    elif texto == "👩 Creadoras":
+    # 👤 USUARIO
 
-        botones_creadoras = [
-            [
-                InlineKeyboardButton(
-                    "👩 Ana — Desde 300 puntos",
-                    callback_data="ana"
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    "👩‍💻 Quiero ser creadora",
-                    callback_data="creadora"
-                )
-            ]
-        ]
+    elif texto == "👤 Soy Usuario":
 
         await update.message.reply_text(
-            "🌟 CREADORAS DISPONIBLES\n\n"
-            "Selecciona una creadora:",
-            reply_markup=InlineKeyboardMarkup(botones_creadoras)
+            "👤💎 ¡MODO USUARIO ACTIVADO! 💎\n\n"
+            "🔎 Descubre modelos\n"
+            "⭐ Consulta tu saldo\n"
+            "💰 Recarga puntos\n"
+            "🛍️ Revisa tus compras\n"
+            "📞 Gestiona tus llamadas\n\n"
+            "👇 ¿Qué quieres hacer?",
+            reply_markup=menu_usuario()
         )
 
-    elif texto == "💰 Saldo":
+    # 🔥 MODELO
+
+    elif texto == "🔥 Soy Modelo":
 
         await update.message.reply_text(
-            "⭐ MI SALDO\n\n"
-            "Saldo actual: 0 puntos.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "💰 Recargar",
-                        callback_data="recargar"
-                    )
-                ]
-            ])
+            "🔥💎 ¡MODO MODELO! 💎🔥\n\n"
+            "📸 Publica contenido\n"
+            "💬 Conecta con usuarios\n"
+            "📞 Recibe llamadas\n"
+            "💰 Gana dinero\n"
+            "📊 Controla tus ventas\n"
+            "💸 Solicita tus retiros\n\n"
+            "👇 Gestiona tu actividad:",
+            reply_markup=menu_modelo()
         )
 
-    elif texto == "🛒 Compras":
+    # 🏢 AGENCIA
+
+    elif texto == "🏢 Soy Agencia":
 
         await update.message.reply_text(
-            "🛒 MIS COMPRAS\n\n"
-            "Todavía no tienes compras."
-        )
-
-    elif texto == "👤 Mi cuenta":
-
-        await update.message.reply_text(
-            "👤 MI CUENTA\n\n"
-            "Tu cuenta de Digitalia está activa."
+            "🏢🔥 ¡MODO AGENCIA! 🔥🏢\n\n"
+            "👩‍👩‍👧 Gestiona tus modelos\n"
+            "➕ Recluta nuevas modelos\n"
+            "🔑 Administra tus códigos\n"
+            "📊 Controla las ventas\n"
+            "💰 Consulta tus comisiones\n"
+            "💸 Gestiona tus retiros\n\n"
+            "👇 Gestiona tu agencia:",
+            reply_markup=menu_agencia()
         )
 
 
-# =========================
-# BOTONES INTERNOS
-# =========================
+# ==================================================
+# 🔘 BOTONES INTERNOS
+# ==================================================
 
 async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     query = update.callback_query
+
     await query.answer()
 
-    # CREADORAS
+    # 👤 USUARIO
 
-    if query.data == "creadora":
+    if query.data == "usuario":
 
         await query.edit_message_text(
-            "👩‍💻 QUIERO SER CREADORA\n\n"
-            "Para registrarte necesitarás pertenecer "
-            "a una agencia oficial de Digitalia.\n\n"
-            "La agencia te proporcionará un código "
-            "de registro.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "🔑 Tengo código de agencia",
-                        callback_data="codigo_agencia"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "🏢 Necesito una agencia",
-                        callback_data="buscar_agencia"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="inicio"
-                    )
-                ]
-            ])
+            "👤💎 ¡MODO USUARIO! 💎\n\n"
+            "🔎 Explora modelos\n"
+            "⭐ Consulta tu saldo\n"
+            "💰 Recarga\n"
+            "🛍️ Revisa tus compras\n"
+            "📞 Gestiona tus llamadas\n\n"
+            "👇 Selecciona una opción:",
+            reply_markup=menu_usuario()
         )
 
-    # AGENCIA
+    # 🔥 MODELO
+
+    elif query.data == "modelo":
+
+        await query.edit_message_text(
+            "🔥💎 ¡MODO MODELO! 💎🔥\n\n"
+            "📸 Publica contenido\n"
+            "💰 Consulta tus ganancias\n"
+            "📊 Revisa tus ventas\n"
+            "📞 Gestiona tus llamadas\n"
+            "🏢 Consulta tu agencia\n"
+            "💸 Solicita tu retiro\n\n"
+            "👇 Selecciona una opción:",
+            reply_markup=menu_modelo()
+        )
+
+    # 🏢 AGENCIA
 
     elif query.data == "agencia":
 
         await query.edit_message_text(
-            "🏢 PROGRAMA DE AGENCIAS DIGITALIA\n\n"
-            "Las agencias podrán incorporar creadoras, "
-            "gestionar su equipo y recibir comisiones "
-            "por las ventas de sus creadoras.",
+            "🏢🔥 ¡MODO AGENCIA! 🔥🏢\n\n"
+            "👩‍👩‍👧 Gestiona modelos\n"
+            "➕ Recluta modelos\n"
+            "🔑 Administra códigos\n"
+            "📊 Controla ventas\n"
+            "💰 Consulta comisiones\n"
+            "🏗️ Crea tu agencia\n\n"
+            "👇 Selecciona una opción:",
+            reply_markup=menu_agencia()
+        )
+
+    # 🔎 EXPLORAR
+
+    elif query.data == "explorar":
+
+        await query.edit_message_text(
+            "🔎🔥 MODELOS DISPONIBLES 🔥\n\n"
+            "👩 Ana\n"
+            "💎 Contenido exclusivo\n"
+            "📸 Desde 300 puntos\n\n"
+            "👇 Selecciona un perfil:",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "🔑 Tengo código de agencia",
-                        callback_data="login_agencia"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "📝 Solicitar ser agencia",
-                        callback_data="solicitar_agencia"
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="inicio"
+                        "👩 Ana — Ver perfil",
+                        callback_data="ana"
                     )
                 ]
             ])
         )
 
-    # ANA
+    # 👩 ANA
 
     elif query.data == "ana":
 
         await query.edit_message_text(
-            "👩 ANA\n\n"
-            "✨ Contenido exclusivo\n\n"
+            "👩🔥 ANA 🔥\n\n"
+            "💎 Perfil exclusivo\n\n"
             "📸 Foto — 300 puntos\n"
             "🎥 Video — 700 puntos\n"
-            "📞 Tiempo privado — 20 puntos/min",
+            "📞 Tiempo privado — 20 puntos/min\n\n"
+            "👇 Elige una opción:",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
@@ -287,198 +466,173 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ])
         )
 
-    # EXPLORAR
-
-    elif query.data == "explorar":
-
-        await query.edit_message_text(
-            "🌟 CREADORAS DISPONIBLES\n\n"
-            "👩 Ana\n"
-            "✨ Contenido exclusivo\n"
-            "💰 Desde 300 puntos",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "👩 Ana — Ver perfil",
-                        callback_data="ana"
-                    )
-                ]
-            ])
-        )
-
-    # FOTO
+    # 📸 FOTO
 
     elif query.data == "foto":
 
         await query.edit_message_text(
-            "📸 FOTO DE ANA\n\n"
-            "💰 Precio: 300 puntos\n\n"
-            "🔓 Próximamente podrás desbloquearla.",
+            "📸🔥 FOTO EXCLUSIVA\n\n"
+            "💎 Precio: 300 puntos\n\n"
+            "🔒 Contenido bloqueado.\n"
+            "💰 Recarga tu saldo para desbloquearlo.",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "⬅️ Volver al perfil",
+                        "💰 Recargar",
+                        callback_data="recargar"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Volver",
                         callback_data="ana"
                     )
                 ]
             ])
         )
 
-    # VIDEO
+    # 🎥 VIDEO
 
     elif query.data == "video":
 
         await query.edit_message_text(
-            "🎥 VIDEO DE ANA\n\n"
-            "💰 Precio: 700 puntos\n\n"
-            "🔓 Próximamente podrás desbloquearlo.",
+            "🎥🔥 VIDEO EXCLUSIVO\n\n"
+            "💎 Precio: 700 puntos\n\n"
+            "🔒 Contenido bloqueado.",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "⬅️ Volver al perfil",
+                        "💰 Recargar",
+                        callback_data="recargar"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "⬅️ Volver",
                         callback_data="ana"
                     )
                 ]
             ])
         )
 
-    # LLAMADA
+    # 📞 LLAMADA
 
     elif query.data == "llamada":
 
         await query.edit_message_text(
-            "📞 TIEMPO PRIVADO\n\n"
-            "💰 Precio: 20 puntos por minuto\n\n"
-            "🔓 Próximamente podrás solicitarlo.",
+            "📞🔥 TIEMPO PRIVADO\n\n"
+            "💎 20 puntos por minuto\n\n"
+            "🔒 Próximamente podrás solicitar una llamada.",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "⬅️ Volver al perfil",
+                        "⬅️ Volver",
                         callback_data="ana"
                     )
                 ]
             ])
         )
 
-    # CÓDIGO AGENCIA
+    # ⭐ SALDO
 
-    elif query.data == "codigo_agencia":
+    elif query.data == "saldo":
 
         await query.edit_message_text(
-            "🔑 CÓDIGO DE AGENCIA\n\n"
-            "Escribe el código que te proporcionó "
-            "tu agencia.\n\n"
-            "Ejemplo: DIGI-4827\n\n"
-            "Esta función estará disponible próximamente.",
+            "⭐💰 MI SALDO\n\n"
+            "💎 Saldo disponible: 0 puntos\n\n"
+            "👇 ¿Quieres recargar?",
             reply_markup=InlineKeyboardMarkup([
                 [
                     InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="creadora"
+                        "💰 Recargar saldo",
+                        callback_data="recargar"
                     )
                 ]
             ])
         )
 
-    # BUSCAR AGENCIA
-
-    elif query.data == "buscar_agencia":
-
-        await query.edit_message_text(
-            "🏢 AGENCIAS OFICIALES\n\n"
-            "Aquí aparecerán las agencias oficiales "
-            "de Digitalia.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="creadora"
-                    )
-                ]
-            ])
-        )
-
-    # LOGIN AGENCIA
-
-    elif query.data == "login_agencia":
-
-        await query.edit_message_text(
-            "🔑 ACCESO DE AGENCIA\n\n"
-            "Introduce tu código de agencia.\n\n"
-            "Ejemplo: AGENCIA-1001\n\n"
-            "Esta función estará disponible próximamente.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="agencia"
-                    )
-                ]
-            ])
-        )
-
-    # SOLICITAR AGENCIA
-
-    elif query.data == "solicitar_agencia":
-
-        await query.edit_message_text(
-            "📝 SOLICITUD DE AGENCIA\n\n"
-            "Las solicitudes serán revisadas por Digitalia "
-            "antes de aprobar una nueva agencia.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="agencia"
-                    )
-                ]
-            ])
-        )
-
-    # RECARGAR
+    # 💰 RECARGAR
 
     elif query.data == "recargar":
 
         await query.edit_message_text(
-            "💰 RECARGAR\n\n"
-            "La recarga estará disponible próximamente.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="inicio"
-                    )
-                ]
-            ])
+            "💰🔥 RECARGAR SALDO\n\n"
+            "💎 Próximamente podrás comprar puntos "
+            "para desbloquear contenido.\n\n"
+            "✨ Digitalia"
         )
 
-    # AYUDA
+    # 🛍️ COMPRAS
 
-    elif query.data == "ayuda":
+    elif query.data == "compras":
 
         await query.edit_message_text(
-            "❓ AYUDA\n\n"
-            "Digitalia está actualmente en fase de prueba.",
-            reply_markup=InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton(
-                        "⬅️ Volver",
-                        callback_data="inicio"
-                    )
-                ]
-            ])
+            "🛍️💎 MIS COMPRAS\n\n"
+            "Todavía no tienes compras."
         )
 
-    # INICIO
+    # 📞 MIS LLAMADAS
 
-    elif query.data == "inicio":
+    elif query.data == "mis_llamadas":
 
-        await mostrar_inicio(query)
+        await query.edit_message_text(
+            "📞🔥 MIS LLAMADAS\n\n"
+            "No tienes llamadas programadas."
+        )
+
+    # 👤 PERFIL
+
+    elif query.data == "perfil":
+
+        await query.edit_message_text(
+            "👤💎 MI PERFIL\n\n"
+            "Tu perfil de usuario está activo."
+        )
+
+    # 🔥 OPCIONES MODELO
+
+    elif query.data in [
+        "perfil_modelo",
+        "contenido_modelo",
+        "publicar",
+        "ganancias",
+        "ventas",
+        "llamadas_modelo",
+        "mi_agencia",
+        "retiro"
+    ]:
+
+        await query.edit_message_text(
+            "🔥💎 FUNCIÓN DE MODELO\n\n"
+            "Esta función formará parte del panel "
+            "de modelos de Digitalia.\n\n"
+            "🚀 La estamos preparando."
+        )
+
+    # 🏢 OPCIONES AGENCIA
+
+    elif query.data in [
+        "mis_modelos",
+        "reclutar",
+        "codigos",
+        "ventas_equipo",
+        "comisiones",
+        "retiro_agencia",
+        "perfil_agencia",
+        "crear_agencia"
+    ]:
+
+        await query.edit_message_text(
+            "🏢🔥 PANEL DE AGENCIA\n\n"
+            "Esta función formará parte del sistema "
+            "de agencias de Digitalia.\n\n"
+            "🚀 La estamos preparando."
+        )
 
 
-# =========================
-# INICIAR DIGITALIA
-# =========================
+# ==================================================
+# 🚀 INICIAR
+# ==================================================
 
 def main():
 
@@ -504,7 +658,7 @@ def main():
         )
     )
 
-    print("Digitalia: bot iniciado correctamente.")
+    print("🌟 Digitalia: bot iniciado correctamente 🔥")
 
     application.run_polling()
 

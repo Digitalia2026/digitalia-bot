@@ -35,13 +35,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❓ Ayuda", callback_data="ayuda")],
     ]
 
-    teclado = InlineKeyboardMarkup(botones)
-
     await update.message.reply_text(
         "🌟 DIGITALIA\n\n"
         "👋 Bienvenido.\n"
         "Explora creadoras y descubre su contenido.",
-        reply_markup=teclado,
+        reply_markup=InlineKeyboardMarkup(botones),
     )
 
 
@@ -64,12 +62,16 @@ async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
-    iniciar_web()
+    # Iniciar la página web en segundo plano
+    Thread(target=iniciar_web, daemon=True).start()
 
+    # Iniciar el bot de Telegram
     application = Application.builder().token(TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(botones))
+
+    print("Digitalia: bot iniciado correctamente.")
 
     application.run_polling()
 

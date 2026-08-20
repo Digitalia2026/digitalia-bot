@@ -1,773 +1,613 @@
+```python
 import os
 from threading import Thread
 
 from flask import Flask
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-    ReplyKeyboardMarkup,
-)
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    CallbackQueryHandler,
-    ContextTypes,
-    filters,
-)
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 TOKEN = os.getenv("BOT_TOKEN")
 
 # =========================================================
-# 🌐 CONFIGURACIÓN DE CANALES
+# 🌐 CANALES
 # =========================================================
 
 MODELS_CHANNEL = "https://t.me/TU_CANAL_DE_MODELOS"
 AGENCY_CHANNEL = "https://t.me/TU_CANAL_DE_AGENCIAS"
 
-
 # =========================================================
-# 🌐 SERVIDOR WEB PARA RENDER
+# 🌐 SERVIDOR PARA RENDER
 # =========================================================
 
-app_web = Flask(__name__)
+web = Flask(__name__)
 
+@web.route("/")
+def home():
+    return "🖤🔥 Velvet Musa funcionando 😈"
 
-@app_web.route("/")
-def inicio_web():
-    return "🖤🔥 Velvet Musa está funcionando 😈"
-
-
-def iniciar_web():
+def run_web():
     port = int(os.environ.get("PORT", 10000))
-    app_web.run(host="0.0.0.0", port=port)
-
+    web.run(host="0.0.0.0", port=port)
 
 # =========================================================
-# 🌎 IDIOMAS
+# 🌎 TEXTOS
 # =========================================================
 
-TEXTOS = {
+ES = {
+    "home": "🏠 Inicio",
+    "user": "👤 Soy Usuario 😏",
+    "model": "🔥 Soy Modelo 💋",
+    "agency": "🏢 Soy Agencia 😈",
+    "language": "🌎 Idioma",
 
-    "es": {
+    "welcome": """🖤🔥 VELVET MUSA 🔥🖤
 
-        "user": "👤 Soy Usuario",
-        "model": "🔥 Soy Modelo",
-        "agency": "🏢 Soy Agencia",
-        "home": "🏠 Inicio",
-        "language": "🌎 Idioma",
+🌙 Hay noches que empiezan con un simple “hola”… 😈
 
-        "welcome": (
-            "🖤🔥 VELVET MUSA 🔥🖤\n\n"
-            "🌙 Hay noches que empiezan con un simple “hola”… 😈\n\n"
-            "💋 Conoce a nuestras Musas\n"
-            "✨ Elige la que despierte tu curiosidad\n"
-            "💬 Habla con ella\n"
-            "📸 Descubre su contenido privado\n"
-            "📞 Comparte un momento a solas 🔥\n\n"
-            "😈 Quizás encuentres exactamente lo que estabas buscando…\n\n"
-            "👇 ¿Qué estás buscando?"
-        ),
+💋 Conoce a nuestras Musas
+✨ Elige la que despierte tu curiosidad
+💬 Habla con ella
+📸 Descubre su contenido privado
+📞 Comparte un momento a solas 🔥
 
-        "again": (
-            "🖤🔥 ¡Qué bueno verte otra vez! 😈\n\n"
-            "🌙 ¿Qué quieres hacer esta noche?"
-        ),
+😈 Quizás encuentres exactamente lo que estabas buscando…
 
-        "choose": "👇 Selecciona una opción:",
+👇 ¿Qué estás buscando?""",
 
-        "user_title": "👤💎 MODO USUARIO 💎",
-        "user_text": (
-            "🔎 Explora nuestras Musas\n"
-            "⭐ Consulta tu saldo\n"
-            "💰 Recarga puntos\n"
-            "🛍️ Revisa tus compras\n"
-            "📞 Gestiona tus llamadas"
-        ),
+    "choose": "👇 Elige una opción:",
+    "back": "⬅️ Volver",
 
-        "explore": "🔎 Explorar Musas",
-        "balance": "⭐ Mi saldo",
-        "recharge": "💰 Recargar saldo",
-        "purchases": "🛍️ Mis compras",
-        "calls": "📞 Mis llamadas",
-        "profile": "👤 Mi perfil",
+    "user_title": "👤💎 MODO USUARIO 💎",
+    "explore": "🔎 Explorar Musas",
+    "balance": "⭐ Mi saldo",
+    "recharge": "💰 Recargar saldo",
+    "purchases": "🛍️ Mis compras",
+    "calls": "📞 Mis llamadas",
+    "profile": "👤 Mi perfil",
 
-        "model_title": "🔥💎 MODO MODELO 💎🔥",
-        "model_text": (
-            "📸 Publica tu contenido\n"
-            "💬 Conecta con usuarios\n"
-            "📞 Recibe llamadas\n"
-            "💰 Controla tus ganancias\n"
-            "📊 Revisa tus ventas\n"
-            "💸 Solicita tus retiros"
-        ),
+    "model_title": "🔥💎 MODO MODELO 💎🔥",
+    "my_profile": "👤 Mi perfil",
+    "content": "📸 Mi contenido",
+    "publish": "➕ Publicar contenido",
+    "earnings": "💰 Mis ganancias",
+    "sales": "📊 Mis ventas",
+    "model_calls": "📞 Mis llamadas",
+    "my_agency": "🏢 Mi agencia",
+    "withdraw": "💸 Solicitar retiro",
+    "model_channel": "📢 Canal exclusivo para Musas",
 
-        "my_profile": "👤 Mi perfil",
-        "my_content": "📸 Mi contenido",
-        "publish": "➕ Publicar contenido",
-        "earnings": "💰 Mis ganancias",
-        "sales": "📊 Mis ventas",
-        "model_calls": "📞 Mis llamadas",
-        "my_agency": "🏢 Mi agencia",
-        "withdraw": "💸 Solicitar retiro",
-        "model_channel": "📢 Canal exclusivo para Musas",
+    "agency_title": "🏢🔥 MODO AGENCIA 🔥🏢",
+    "models": "👩‍👩‍👧 Mis Musas",
+    "recruit": "➕ Reclutar Musa",
+    "codes": "🔑 Mis códigos",
+    "team_sales": "📊 Ventas del equipo",
+    "commissions": "💰 Mis comisiones",
+    "agency_withdraw": "💸 Solicitar retiro",
+    "agency_profile": "📝 Mi agencia",
+    "create_agency": "🏗️ Crear agencia",
+    "agency_channel": "📢 Canal exclusivo para agencias",
 
-        "agency_title": "🏢🔥 MODO AGENCIA 🔥🏢",
-        "agency_text": (
-            "👩‍👩‍👧 Gestiona tus Musas\n"
-            "➕ Recluta nuevas modelos\n"
-            "🔑 Administra tus códigos\n"
-            "📊 Controla las ventas\n"
-            "💰 Consulta tus comisiones\n"
-            "💸 Gestiona tus retiros"
-        ),
+    "language_title": "🌎 IDIOMA / LANGUAGE",
+    "language_text": "Elige el idioma de Velvet Musa:",
+    "spanish": "🇪🇸 Español",
+    "english": "🇺🇸 English",
 
-        "my_models": "👩‍👩‍👧 Mis Musas",
-        "recruit": "➕ Reclutar Musa",
-        "codes": "🔑 Mis códigos",
-        "team_sales": "📊 Ventas del equipo",
-        "commissions": "💰 Mis comisiones",
-        "agency_withdraw": "💸 Solicitar retiro",
-        "agency_profile": "📝 Mi agencia",
-        "create_agency": "🏗️ Crear agencia",
-        "agency_channel": "📢 Canal exclusivo para agencias",
+    "catalog": "🔥 DESCUBRE NUESTRAS MUSAS 🔥",
+    "view_profile": "💋 Ver perfil",
+    "previous": "⬅️ Anterior",
+    "next": "Siguiente ➡️",
 
-        "back": "⬅️ Volver",
-        "available": "🟢 Disponible",
-        "see_profile": "💋 Ver perfil",
-        "previous": "⬅️ Anterior",
-        "next": "Siguiente ➡️",
+    "ana": """👩🔥 ANA 🔥
 
-        "language_title": "🌎 IDIOMA / LANGUAGE",
-        "language_text": "Elige el idioma de Velvet Musa:",
+🎂 24 años · 🇨🇴 Colombia
 
-        "spanish": "🇪🇸 Español",
-        "english": "🇺🇸 English",
+✨ Me encanta conversar, conocer personas y compartir momentos especiales. 😈
 
-        "models_title": "🔥 DESCUBRE NUESTRAS MUSAS 🔥",
+🟢 Disponible
 
-        "ana_profile": (
-            "👩🔥 ANA 🔥\n\n"
-            "🎂 24 años · 🇨🇴 Colombia\n\n"
-            "✨ Me encanta conversar, conocer personas "
-            "y compartir momentos especiales. 😈\n\n"
-            "🟢 Disponible\n\n"
-            "📞 Llamadas desde 25 💎/min\n"
-            "📸 Contenido desde 300 💎"
-        ),
+📞 Llamadas desde 25 💎/min
+📸 Contenido desde 300 💎""",
 
-        "content_locked": (
-            "📸🔥 CONTENIDO EXCLUSIVO 🔥\n\n"
-            "🔒 El contenido se desbloquea utilizando "
-            "tus puntos de Velvet Musa. 💎\n\n"
-            "🚀 Sistema de puntos próximamente."
-        ),
+    "locked": """📸🔥 CONTENIDO EXCLUSIVO 🔥
 
-        "balance_text": (
-            "⭐💎 MI SALDO 💎⭐\n\n"
-            "💎 Saldo disponible: 0 puntos\n\n"
-            "🔥 Recarga para comenzar a descubrir "
-            "contenido exclusivo."
-        ),
+🔒 Las fotos y vídeos privados estarán disponibles mediante puntos. 💎
 
-        "recharge_text": (
-            "💰🔥 RECARGAR SALDO 🔥💰\n\n"
-            "💎 Próximamente podrás comprar puntos "
-            "para desbloquear contenido y disfrutar "
-            "de llamadas privadas. 😈"
-        ),
+😈 Esta función estará disponible próximamente.""",
 
-        "coming": (
-            "🚀🔥 FUNCIÓN EN DESARROLLO 🔥\n\n"
-            "Estamos preparando esta función para "
-            "Velvet Musa. 🖤"
-        ),
-    },
+    "balance_text": """⭐💎 MI SALDO 💎⭐
 
-    "en": {
+💎 Saldo disponible: 0 puntos
 
-        "user": "👤 I'm a User",
-        "model": "🔥 I'm a Model",
-        "agency": "🏢 I'm an Agency",
-        "home": "🏠 Home",
-        "language": "🌎 Language",
+🔥 Próximamente podrás recargar y disfrutar de contenido exclusivo.""",
 
-        "welcome": (
-            "🖤🔥 VELVET MUSA 🔥🖤\n\n"
-            "🌙 Some nights start with a simple “hello”… 😈\n\n"
-            "💋 Meet our Muses\n"
-            "✨ Choose the one who catches your eye\n"
-            "💬 Talk to her\n"
-            "📸 Discover her private content\n"
-            "📞 Spend some private time together 🔥\n\n"
-            "😈 You might find exactly what you've been looking for…\n\n"
-            "👇 What are you looking for?"
-        ),
+    "coming": """🚀🔥 PRÓXIMAMENTE 🔥
 
-        "again": (
-            "🖤🔥 Good to see you again! 😈\n\n"
-            "🌙 What would you like to do tonight?"
-        ),
-
-        "choose": "👇 Choose an option:",
-
-        "user_title": "👤💎 USER MODE 💎",
-        "user_text": (
-            "🔎 Explore our Muses\n"
-            "⭐ Check your balance\n"
-            "💰 Add points\n"
-            "🛍️ View your purchases\n"
-            "📞 Manage your calls"
-        ),
-
-        "explore": "🔎 Explore Muses",
-        "balance": "⭐ My balance",
-        "recharge": "💰 Add balance",
-        "purchases": "🛍️ My purchases",
-        "calls": "📞 My calls",
-        "profile": "👤 My profile",
-
-        "model_title": "🔥💎 MODEL MODE 💎🔥",
-        "model_text": (
-            "📸 Publish your content\n"
-            "💬 Connect with users\n"
-            "📞 Receive calls\n"
-            "💰 Manage your earnings\n"
-            "📊 Check your sales\n"
-            "💸 Request withdrawals"
-        ),
-
-        "my_profile": "👤 My profile",
-        "my_content": "📸 My content",
-        "publish": "➕ Publish content",
-        "earnings": "💰 My earnings",
-        "sales": "📊 My sales",
-        "model_calls": "📞 My calls",
-        "my_agency": "🏢 My agency",
-        "withdraw": "💸 Request withdrawal",
-        "model_channel": "📢 Exclusive Muses channel",
-
-        "agency_title": "🏢🔥 AGENCY MODE 🔥🏢",
-        "agency_text": (
-            "👩‍👩‍👧 Manage your Muses\n"
-            "➕ Recruit new models\n"
-            "🔑 Manage your codes\n"
-            "📊 Track team sales\n"
-            "💰 Check your commissions\n"
-            "💸 Manage withdrawals"
-        ),
-
-        "my_models": "👩‍👩‍👧 My Muses",
-        "recruit": "➕ Recruit a Muse",
-        "codes": "🔑 My codes",
-        "team_sales": "📊 Team sales",
-        "commissions": "💰 My commissions",
-        "agency_withdraw": "💸 Request withdrawal",
-        "agency_profile": "📝 My agency",
-        "create_agency": "🏗️ Create agency",
-        "agency_channel": "📢 Exclusive agency channel",
-
-        "back": "⬅️ Back",
-        "available": "🟢 Available",
-        "see_profile": "💋 View profile",
-        "previous": "⬅️ Previous",
-        "next": "Next ➡️",
-
-        "language_title": "🌎 LANGUAGE / IDIOMA",
-        "language_text": "Choose your Velvet Musa language:",
-
-        "spanish": "🇪🇸 Español",
-        "english": "🇺🇸 English",
-
-        "models_title": "🔥 DISCOVER OUR MUSES 🔥",
-
-        "ana_profile": (
-            "👩🔥 ANA 🔥\n\n"
-            "🎂 24 years · 🇨🇴 Colombia\n\n"
-            "✨ I love talking, meeting new people "
-            "and sharing special moments. 😈\n\n"
-            "🟢 Available\n\n"
-            "📞 Calls from 25 💎/min\n"
-            "📸 Content from 300 💎"
-        ),
-
-        "content_locked": (
-            "📸🔥 PRIVATE CONTENT 🔥\n\n"
-            "🔒 Content will be unlocked using "
-            "your Velvet Musa points. 💎\n\n"
-            "🚀 Points system coming soon."
-        ),
-
-        "balance_text": (
-            "⭐💎 MY BALANCE 💎⭐\n\n"
-            "💎 Available balance: 0 points\n\n"
-            "🔥 Add points to start discovering "
-            "exclusive content."
-        ),
-
-        "recharge_text": (
-            "💰🔥 ADD BALANCE 🔥💰\n\n"
-            "💎 Soon you'll be able to purchase points "
-            "to unlock content and enjoy private calls. 😈"
-        ),
-
-        "coming": (
-            "🚀🔥 FEATURE IN DEVELOPMENT 🔥\n\n"
-            "We're preparing this feature for "
-            "Velvet Musa. 🖤"
-        ),
-    }
+Estamos preparando esta función para Velvet Musa. 🖤😈"""
 }
 
 
+EN = {
+    "home": "🏠 Home",
+    "user": "👤 I'm a User 😏",
+    "model": "🔥 I'm a Model 💋",
+    "agency": "🏢 I'm an Agency 😈",
+    "language": "🌎 Language",
+
+    "welcome": """🖤🔥 VELVET MUSA 🔥🖤
+
+🌙 Some nights start with a simple “hello”… 😈
+
+💋 Meet our Muses
+✨ Choose the one who catches your eye
+💬 Talk to her
+📸 Discover her private content
+📞 Spend some private time together 🔥
+
+😈 You might find exactly what you've been looking for…
+
+👇 What are you looking for?""",
+
+    "choose": "👇 Choose an option:",
+    "back": "⬅️ Back",
+
+    "user_title": "👤💎 USER MODE 💎",
+    "explore": "🔎 Explore Muses",
+    "balance": "⭐ My balance",
+    "recharge": "💰 Add balance",
+    "purchases": "🛍️ My purchases",
+    "calls": "📞 My calls",
+    "profile": "👤 My profile",
+
+    "model_title": "🔥💎 MODEL MODE 💎🔥",
+    "my_profile": "👤 My profile",
+    "content": "📸 My content",
+    "publish": "➕ Publish content",
+    "earnings": "💰 My earnings",
+    "sales": "📊 My sales",
+    "model_calls": "📞 My calls",
+    "my_agency": "🏢 My agency",
+    "withdraw": "💸 Request withdrawal",
+    "model_channel": "📢 Exclusive Muses channel",
+
+    "agency_title": "🏢🔥 AGENCY MODE 🔥🏢",
+    "models": "👩‍👩‍👧 My Muses",
+    "recruit": "➕ Recruit a Muse",
+    "codes": "🔑 My codes",
+    "team_sales": "📊 Team sales",
+    "commissions": "💰 My commissions",
+    "agency_withdraw": "💸 Request withdrawal",
+    "agency_profile": "📝 My agency",
+    "create_agency": "🏗️ Create agency",
+    "agency_channel": "📢 Exclusive agency channel",
+
+    "language_title": "🌎 LANGUAGE / IDIOMA",
+    "language_text": "Choose your Velvet Musa language:",
+    "spanish": "🇪🇸 Español",
+    "english": "🇺🇸 English",
+
+    "catalog": "🔥 DISCOVER OUR MUSES 🔥",
+    "view_profile": "💋 View profile",
+    "previous": "⬅️ Previous",
+    "next": "Next ➡️",
+
+    "ana": """👩🔥 ANA 🔥
+
+🎂 24 years · 🇨🇴 Colombia
+
+✨ I love talking, meeting new people and sharing special moments. 😈
+
+🟢 Available
+
+📞 Calls from 25 💎/min
+📸 Content from 300 💎""",
+
+    "locked": """📸🔥 PRIVATE CONTENT 🔥
+
+🔒 Private photos and videos will be available using points. 💎
+
+😈 This feature will be available soon.""",
+
+    "balance_text": """⭐💎 MY BALANCE 💎⭐
+
+💎 Available balance: 0 points
+
+🔥 Soon you'll be able to add points and enjoy exclusive content.""",
+
+    "coming": """🚀🔥 COMING SOON 🔥
+
+We're preparing this feature for Velvet Musa. 🖤😈"""
+}
+
 # =========================================================
-# 🧠 IDIOMA DEL USUARIO
+# 🌎 IDIOMA
 # =========================================================
-
-def idioma_usuario(update: Update):
-
-    user = update.effective_user
-
-    if user.language_code:
-        codigo = user.language_code.lower()
-
-        if codigo.startswith("es"):
-            return "es"
-
-        if codigo.startswith("en"):
-            return "en"
-
-    return "es"
-
 
 def get_lang(context):
+    return context.user_data.get("lang", "es")
 
-    return context.user_data.get("language", "es")
+def texts(context):
+    return ES if get_lang(context) == "es" else EN
 
+def detect_language(update):
+    code = update.effective_user.language_code or "es"
+    return "en" if code.lower().startswith("en") else "es"
 
 # =========================================================
 # 📱 MENÚ INFERIOR
 # =========================================================
 
-def menu_inferior(lang):
-
-    t = TEXTOS[lang]
-
+def bottom_menu(t):
     return ReplyKeyboardMarkup(
         [
             [t["home"], t["user"]],
             [t["model"], t["agency"]],
-            [t["language"]],
+            [t["language"]]
         ],
         resize_keyboard=True,
         is_persistent=True
     )
 
-
 # =========================================================
-# 🌟 MENÚ PRINCIPAL
+# 🏠 MENÚ PRINCIPAL
 # =========================================================
 
-def menu_principal(lang):
-
-    t = TEXTOS[lang]
-
+def main_menu(t):
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                t["user"],
-                callback_data="usuario"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["model"],
-                callback_data="modelo"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["agency"],
-                callback_data="agencia"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["language"],
-                callback_data="idioma"
-            )
-        ]
+        [InlineKeyboardButton(t["user"], callback_data="user")],
+        [InlineKeyboardButton(t["model"], callback_data="model")],
+        [InlineKeyboardButton(t["agency"], callback_data="agency")],
+        [InlineKeyboardButton(t["language"], callback_data="language")]
     ])
-
 
 # =========================================================
 # 👤 MENÚ USUARIO
 # =========================================================
 
-def menu_usuario(lang):
-
-    t = TEXTOS[lang]
-
+def user_menu(t):
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                t["explore"],
-                callback_data="explorar"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["balance"],
-                callback_data="saldo"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["recharge"],
-                callback_data="recargar"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["purchases"],
-                callback_data="compras"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["calls"],
-                callback_data="mis_llamadas"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["profile"],
-                callback_data="perfil"
-            )
-        ]
+        [InlineKeyboardButton(t["explore"], callback_data="explore")],
+        [InlineKeyboardButton(t["balance"], callback_data="balance")],
+        [InlineKeyboardButton(t["recharge"], callback_data="recharge")],
+        [InlineKeyboardButton(t["purchases"], callback_data="purchases")],
+        [InlineKeyboardButton(t["calls"], callback_data="calls")],
+        [InlineKeyboardButton(t["profile"], callback_data="user_profile")]
     ])
-
 
 # =========================================================
 # 🔥 MENÚ MODELO
 # =========================================================
 
-def menu_modelo(lang):
-
-    t = TEXTOS[lang]
-
+def model_menu(t):
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                t["my_profile"],
-                callback_data="perfil_modelo"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["my_content"],
-                callback_data="contenido_modelo"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["publish"],
-                callback_data="publicar"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["earnings"],
-                callback_data="ganancias"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["sales"],
-                callback_data="ventas"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["model_calls"],
-                callback_data="llamadas_modelo"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["my_agency"],
-                callback_data="mi_agencia"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["withdraw"],
-                callback_data="retiro"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["model_channel"],
-                url=MODELS_CHANNEL
-            )
-        ]
+        [InlineKeyboardButton(t["my_profile"], callback_data="model_profile")],
+        [InlineKeyboardButton(t["content"], callback_data="model_content")],
+        [InlineKeyboardButton(t["publish"], callback_data="publish")],
+        [InlineKeyboardButton(t["earnings"], callback_data="earnings")],
+        [InlineKeyboardButton(t["sales"], callback_data="sales")],
+        [InlineKeyboardButton(t["model_calls"], callback_data="model_calls")],
+        [InlineKeyboardButton(t["my_agency"], callback_data="my_agency")],
+        [InlineKeyboardButton(t["withdraw"], callback_data="withdraw")],
+        [InlineKeyboardButton(t["model_channel"], url=MODELS_CHANNEL)],
+        [InlineKeyboardButton(t["back"], callback_data="home")]
     ])
-
 
 # =========================================================
 # 🏢 MENÚ AGENCIA
 # =========================================================
 
-def menu_agencia(lang):
-
-    t = TEXTOS[lang]
-
+def agency_menu(t):
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                t["my_models"],
-                callback_data="mis_modelos"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["recruit"],
-                callback_data="reclutar"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["codes"],
-                callback_data="codigos"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["team_sales"],
-                callback_data="ventas_equipo"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["commissions"],
-                callback_data="comisiones"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["agency_withdraw"],
-                callback_data="retiro_agencia"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["agency_profile"],
-                callback_data="perfil_agencia"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["create_agency"],
-                callback_data="crear_agencia"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                t["agency_channel"],
-                url=AGENCY_CHANNEL
-            )
-        ]
+        [InlineKeyboardButton(t["models"], callback_data="models")],
+        [InlineKeyboardButton(t["recruit"], callback_data="recruit")],
+        [InlineKeyboardButton(t["codes"], callback_data="codes")],
+        [InlineKeyboardButton(t["team_sales"], callback_data="team_sales")],
+        [InlineKeyboardButton(t["commissions"], callback_data="commissions")],
+        [InlineKeyboardButton(t["agency_withdraw"], callback_data="agency_withdraw")],
+        [InlineKeyboardButton(t["agency_profile"], callback_data="agency_profile")],
+        [InlineKeyboardButton(t["create_agency"], callback_data="create_agency")],
+        [InlineKeyboardButton(t["agency_channel"], url=AGENCY_CHANNEL)],
+        [InlineKeyboardButton(t["back"], callback_data="home")]
     ])
 
-
 # =========================================================
-# 🌎 MENÚ DE IDIOMA
+# 🌎 IDIOMA
 # =========================================================
 
-def menu_idioma():
-
+def language_menu():
     return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                "🇪🇸 Español",
-                callback_data="lang_es"
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "🇺🇸 English",
-                callback_data="lang_en"
-            )
-        ]
+        [InlineKeyboardButton("🇪🇸 Español", callback_data="lang_es")],
+        [InlineKeyboardButton("🇺🇸 English", callback_data="lang_en")]
     ])
 
-
 # =========================================================
-# 👋 START
+# ▶️ START
 # =========================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if "lang" not in context.user_data:
+        context.user_data["lang"] = detect_language(update)
 
-    # Detectamos el idioma automáticamente
-    if "language" not in context.user_data:
-        context.user_data["language"] = idioma_usuario(update)
-        primera_vez = True
-    else:
-        primera_vez = False
+    t = texts(context)
 
-    lang = get_lang(context)
-    t = TEXTOS[lang]
-
-    if primera_vez:
-
-        await update.message.reply_text(
-            t["welcome"],
-            reply_markup=menu_inferior(lang)
-        )
-
-    else:
-
-        await update.message.reply_text(
-            t["again"],
-            reply_markup=menu_inferior(lang)
-        )
+    await update.message.reply_text(
+        t["welcome"],
+        reply_markup=bottom_menu(t)
+    )
 
     await update.message.reply_text(
         t["choose"],
-        reply_markup=menu_principal(lang)
+        reply_markup=main_menu(t)
     )
 
-
 # =========================================================
-# 📱 BOTONES DEL MENÚ INFERIOR
+# 📱 MENÚ INFERIOR
 # =========================================================
 
-async def menu_texto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def text_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    t = texts(context)
+    text = update.message.text
 
-    texto = update.message.text
-    lang = get_lang(context)
-    t = TEXTOS[lang]
-
-    # 🏠 INICIO
-
-    if texto == t["home"]:
-
+    if text == t["home"]:
         await update.message.reply_text(
-            t["again"],
-            reply_markup=menu_inferior(lang)
+            t["welcome"],
+            reply_markup=bottom_menu(t)
         )
-
         await update.message.reply_text(
             t["choose"],
-            reply_markup=menu_principal(lang)
+            reply_markup=main_menu(t)
         )
 
-    # 👤 USUARIO
-
-    elif texto == t["user"]:
-
+    elif text == t["user"]:
         await update.message.reply_text(
-            f"{t['user_title']}\n\n"
-            f"{t['user_text']}\n\n"
-            f"{t['choose']}",
-            reply_markup=menu_usuario(lang)
+            t["user_title"],
+            reply_markup=user_menu(t)
         )
 
-    # 🔥 MODELO
-
-    elif texto == t["model"]:
-
+    elif text == t["model"]:
         await update.message.reply_text(
-            f"{t['model_title']}\n\n"
-            f"{t['model_text']}\n\n"
-            f"{t['choose']}",
-            reply_markup=menu_modelo(lang)
+            t["model_title"],
+            reply_markup=model_menu(t)
         )
 
-    # 🏢 AGENCIA
-
-    elif texto == t["agency"]:
-
+    elif text == t["agency"]:
         await update.message.reply_text(
-            f"{t['agency_title']}\n\n"
-            f"{t['agency_text']}\n\n"
-            f"{t['choose']}",
-            reply_markup=menu_agencia(lang)
+            t["agency_title"],
+            reply_markup=agency_menu(t)
         )
 
-    # 🌎 IDIOMA
-
-    elif texto == t["language"]:
-
+    elif text == t["language"]:
         await update.message.reply_text(
-            f"{t['language_title']}\n\n"
-            f"{t['language_text']}",
-            reply_markup=menu_idioma()
+            t["language_text"],
+            reply_markup=language_menu()
         )
-
 
 # =========================================================
-# 🔘 BOTONES INTERNOS
+# 🔘 BOTONES
 # =========================================================
 
-async def botones(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    lang = get_lang(context)
-    t = TEXTOS[lang]
+    t = texts(context)
+    data = query.data
 
-    # =====================================================
-    # 🌎 CAMBIAR IDIOMA
-    # =====================================================
-
-    if query.data == "idioma":
-
-        await query.edit_message_text(
-            f"{t['language_title']}\n\n"
-            f"{t['language_text']}",
-            reply_markup=menu_idioma()
-        )
-
-        return
-
-    if query.data == "lang_es":
-
-        context.user_data["language"] = "es"
-
-        t = TEXTOS["es"]
+    if data == "lang_es":
+        context.user_data["lang"] = "es"
+        t = ES
 
         await query.edit_message_text(
             t["welcome"],
-            reply_markup=menu_principal("es")
+            reply_markup=main_menu(t)
         )
-
         return
 
-    if query.data == "lang_en":
-
-        context.user_data["language"] = "en"
-
-        t = TEXTOS["en"]
+    if data == "lang_en":
+        context.user_data["lang"] = "en"
+        t = EN
 
         await query.edit_message_text(
             t["welcome"],
-            reply_markup=menu_principal("en")
+            reply_markup=main_menu(t)
         )
-
         return
 
-    # =====================================================
-    # 👤 USUARIO
-    # =====================================================
+    if data == "language":
+        await query.edit_message_text(
+            t["language_text"],
+            reply_markup=language_menu()
+        )
+        return
 
-    if query.data == "usuario":
+    if data == "home":
+        await query.edit_message_text(
+            t["welcome"],
+            reply_markup=main_menu(t)
+        )
+        return
+
+    if data == "user":
+        await query.edit_message_text(
+            t["user_title"],
+            reply_markup=user_menu(t)
+        )
+        return
+
+    if data == "model":
+        await query.edit_message_text(
+            t["model_title"],
+            reply_markup=model_menu(t)
+        )
+        return
+
+    if data == "agency":
+        await query.edit_message_text(
+            t["agency_title"],
+            reply_markup=agency_menu(t)
+        )
+        return
+
+    if data == "explore":
+        await query.edit_message_text(
+            t["catalog"] + "\n\n"
+            "📸 👩 Ana, 24 🇨🇴\n\n"
+            "✨ Me encanta conversar y compartir momentos especiales. 😈\n\n"
+            "🟢 Disponible\n"
+            "📞 25 💎/min\n"
+            "📸 Contenido desde 300 💎",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["view_profile"], callback_data="ana")],
+                [
+                    InlineKeyboardButton(t["previous"], callback_data="soon"),
+                    InlineKeyboardButton(t["next"], callback_data="soon")
+                ],
+                [InlineKeyboardButton(t["back"], callback_data="user")]
+            ])
+        )
+        return
+
+    if data == "ana":
+        await query.edit_message_text(
+            t["ana"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(
+                    "📸 " + ("Ver contenido exclusivo" if get_lang(context) == "es" else "View private content"),
+                    callback_data="ana_content"
+                )],
+                [InlineKeyboardButton(
+                    "📞 " + ("Solicitar llamada" if get_lang(context) == "es" else "Request a call"),
+                    callback_data="ana_call"
+                )],
+                [InlineKeyboardButton(t["back"], callback_data="explore")]
+            ])
+        )
+        return
+
+    if data == "ana_content":
+        await query.edit_message_text(
+            t["locked"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["recharge"], callback_data="recharge")],
+                [InlineKeyboardButton(t["back"], callback_data="ana")]
+            ])
+        )
+        return
+
+    if data == "ana_call":
+        message = (
+            "📞🔥 LLAMADA PRIVADA 🔥\n\n"
+            "👩 Ana\n\n"
+            "💎 25 puntos por minuto\n\n"
+            "😈 Esta función estará disponible próximamente."
+            if get_lang(context) == "es"
+            else
+            "📞🔥 PRIVATE CALL 🔥\n\n"
+            "👩 Ana\n\n"
+            "💎 25 points per minute\n\n"
+            "😈 This feature will be available soon."
+        )
 
         await query.edit_message_text(
-            f"{t['user_title']}\n\n"
-            f"{t['user_text']}\n\n"
-            f"{t['choose']}",
-            reply_markup=menu_usuario(lang)
-       
+            message,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["back"], callback_data="ana")]
+            ])
+        )
+        return
+
+    if data == "balance":
+        await query.edit_message_text(
+            t["balance_text"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["recharge"], callback_data="recharge")],
+                [InlineKeyboardButton(t["back"], callback_data="user")]
+            ])
+        )
+        return
+
+    if data == "recharge":
+        await query.edit_message_text(
+            t["coming"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["back"], callback_data="user")]
+            ])
+        )
+        return
+
+    if data in ["purchases", "calls", "user_profile"]:
+        await query.edit_message_text(
+            t["coming"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["back"], callback_data="user")]
+            ])
+        )
+        return
+
+    if data in [
+        "model_profile",
+        "model_content",
+        "publish",
+        "earnings",
+        "sales",
+        "model_calls",
+        "my_agency",
+        "withdraw"
+    ]:
+        await query.edit_message_text(
+            t["coming"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["back"], callback_data="model")]
+            ])
+        )
+        return
+
+    if data in [
+        "models",
+        "recruit",
+        "codes",
+        "team_sales",
+        "commissions",
+        "agency_withdraw",
+        "agency_profile",
+        "create_agency"
+    ]:
+        await query.edit_message_text(
+            t["coming"],
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton(t["back"], callback_data="agency")]
+            ])
+        )
+        return
+
+    if data == "soon":
+        message = (
+            "🔥 Pronto tendremos más Musas disponibles. 😈"
+            if get_lang(context) == "es"
+            else
+            "🔥 More Muses will be available soon. 😈"
+        )
+
+        await query.answer(message, show_alert=True)
+
+# =========================================================
+# 🚀 INICIAR
+# =========================================================
+
+def main():
+    Thread(target=run_web, daemon=True).start()
+
+    application = Application.builder().token(TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(buttons))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, text_menu)
+    )
+
+    print("🖤🔥 Velvet Musa iniciado 😈")
+
+    application.run_polling()
+
+if __name__ == "__main__":
+    main()
+```
